@@ -238,3 +238,17 @@ EMB_INIT=emb_init.npz bash scripts/run_ood_3fold.sh  # with description-init
 pixi run python scripts/ood_summary.py               # after jobs finish: 3-fold table + average
 ```
 Expect description-init to recover roughly **half-to-two-thirds** of the gap (the unseen-token part), not all — ic's novel *ordering* is the structural residual. Report both 3-fold averages in `REPORT.md`.
+
+## 13. Phase A — validity metric + honest anomaly (run these, then fill REPORT)
+Full plan in `V2_RL_PLAN.md`. Validity is now a first-class metric (validity ≠ accuracy).
+```bash
+# A1 — validity of generations in 3 regimes (greedy ~1.0; sampled/free reveal RL's headroom)
+pixi run python scripts/measure_validity.py --ckpt checkpoints/best.pt --n 300 --temp 1.0
+# A2 — LM-only anomaly (the MODEL's own evidence, separate from the deterministic-validator hybrid)
+pixi run python src/process_logic/predict.py --ckpt checkpoints/best.pt \
+    --out-dir extras/results/lmonly --no-validator \
+    --anomaly-input data/eval_anomaly.csv --calib-file data/val_id.csv
+pixi run python src/process_logic/score.py --pred-dir extras/results/lmonly --gt-dir data
+```
+Add to `REPORT.md`: a **Validity** row (greedy / sampled / free valid_frac) and the **LM-only anomaly**
+F1/ROC-AUC beside the hybrid. Then Phase B: constrained decoding (B0) → RFT (B1) → GRPO (B2).
