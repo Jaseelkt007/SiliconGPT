@@ -22,13 +22,14 @@ cd "${SLURM_SUBMIT_DIR:-$(pwd)}"
 export PATH="$HOME/.pixi/bin:$PATH"
 
 EXCLUDE="${EXCLUDE:-ic}"
-CKPT_DIR="checkpoints/ood_${EXCLUDE}"
-OUT_DIR="extras/results/ood_${EXCLUDE}"
-mkdir -p "$OUT_DIR"
-
-# optional description-init warm start: EMB_INIT=emb_init.npz sbatch ... scripts/run_ood.sh
+# optional description-init warm start -> writes to a SEPARATE _desc dir so baseline and
+# description-init results coexist (ood_summary.py compares them):
+#   EMB_INIT=emb_init.npz sbatch --export=ALL,EXCLUDE=ic,EMB_INIT=emb_init.npz scripts/run_ood.sh
 EMB_INIT="${EMB_INIT:-}"
-EMB_ARG=""; [ -n "$EMB_INIT" ] && EMB_ARG="--emb-init $EMB_INIT"
+if [ -n "$EMB_INIT" ]; then EMB_ARG="--emb-init $EMB_INIT"; TAG="_desc"; else EMB_ARG=""; TAG=""; fi
+CKPT_DIR="checkpoints/ood_${EXCLUDE}${TAG}"
+OUT_DIR="extras/results/ood_${EXCLUDE}${TAG}"
+mkdir -p "$OUT_DIR"
 
 # W&B offline (sync from a login node afterwards: pixi run wandb sync wandb/latest-run)
 export WANDB_MODE="${WANDB_MODE:-offline}"
