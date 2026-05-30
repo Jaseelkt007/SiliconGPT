@@ -79,6 +79,8 @@ def main():
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--device", default=None)
     ap.add_argument("--data-dir", default=None)
+    ap.add_argument("--ckpt-dir", default=None, help="override ckpt_dir (e.g. checkpoints/ood_ic)")
+    ap.add_argument("--out-dir", default=None, help="override out_dir for train_log.csv")
     ap.add_argument("--exclude-family", default=None,
                     help="train/val WITHOUT this family (mosfet|igbt|ic) for the OOD experiment")
     ap.add_argument("--run-name", default="v1")
@@ -93,6 +95,10 @@ def main():
     mcfg = load_yaml(args.model_config)
     if args.data_dir:
         cfg["data_dir"] = args.data_dir
+    if args.ckpt_dir:
+        cfg["ckpt_dir"] = args.ckpt_dir
+    if args.out_dir:
+        cfg["out_dir"] = args.out_dir
     if args.wandb:
         cfg["wandb"] = True
     if args.wandb_mode:
