@@ -46,3 +46,30 @@ model that ran fewer samples is still compared like-for-like.
 > full-eval numbers: ours top-1 **0.807** / completion token-acc **0.400**; n-gram **0.761** /
 > **0.283** (see REPORT.md). The key takeaway holds: ours ≳ n-gram ≫ Gemini in-distribution,
 > our V1 is only marginally above the n-gram (→ improvement must target OOD + long-range).
+
+---
+
+## OOD model-improvement (co-scientist-lab, 2026-05-31)
+
+Deciding metric = **3-fold OOD next-step top1** (train on 2 families, test on the held-out 3rd; avg over
+the 3 hold-outs). Baseline (V1, 25M) = **0.4947**. Each lever is a full 3-fold run (`scripts/run_experiment.py`);
+numbers from `extras/results/coscilab/result_*.json` (single seed). in-dist top1 stays ~0.80 throughout.
+
+| lever | 3-fold OOD top1 | Δ vs baseline | verdict |
+|---|---|---|---|
+| baseline 25M | 0.4947 | — | — |
+| **model size 1.4M** | **0.5139** | **+0.019** | improves-ood |
+| model size 3.0M | 0.5120 | +0.017 | improves-ood |
+| model size 6.4M | 0.5119 | +0.017 | improves-ood |
+| model size 14.7M | 0.5008 | +0.006 | neutral |
+| NoPE (no pos-enc) | 0.4983 | +0.004 | neutral |
+| NoPE + cross-fam aug | 0.4861 | −0.009 | rejected |
+| cross-family aug | 0.4767 | −0.018 | rejected |
+| constrained decoding (h7) | — | ~0 (≈97% errors valid-but-wrong) | rejected |
+
+**Takeaways.** (1) **Scaling DOWN is the only lever that moved OOD** — monotonic +0.019 from 25M→1.4M at
+zero in-dist cost (capacity was memorising per-family shortcuts). (2) **Data/embedding/position/decoding
+levers all fail** (cross-fam aug, desc-init [DECISIONS D1], NoPE, constrained decoding) — the OOD residual
+is *transition-structure learning*: the model picks the wrong **legal** step (only ~3% of OOD errors are
+grammar-invalid). (3) Still-open built/buildable knobs: weight-sharing (h2), family-dropout (h4). Full
+provenance + the integrity note in `DECISIONS.md` D3.

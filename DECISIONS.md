@@ -60,3 +60,69 @@ re-litigate it.)
 - **OOD is the honest frontier** — partial transfer (0.50 vs 0.005 random) with a structural residual
   that no quick lever closed; quantified across 3 folds. This is the "does it learn or memorise?"
   question, answered with data.
+
+---
+
+## D3 — co-scientist-lab model-improvement run (2026-05-30/31)
+
+We built an experimentally-grounded discovery harness (`scripts/run_experiment.py`: config → train
+in-dist + per-OOD-fold → score → JSON; `extras/results/coscilab/`) and ran the **co-scientist-lab** skill
+(Generation → Reflection → Experiment/GPU → Elo ranking → Meta-review) for two rounds. 9 hypotheses
+generated; the config-expressible ones were trained + benchmarked on Leonardo A100s (full 3-fold OOD each).
+All numbers below are read from the on-disk result JSONs (verified, single seed unless noted).
+
+### D3.1 — Scale DOWN improves OOD → **CONFIRMED (the run's positive result)**
+**Hypothesis:** in-distribution is saturated (a trigram nearly ties the 25M model), so excess capacity is
+spent memorising per-family shortcuts that don't transfer to an unseen family. Smaller ⇒ more
+family-agnostic ⇒ better OOD.
+
+**Experiment:** identical training at five sizes, each scored on the held-out family (3-fold).
+
+| size | params | 3-fold OOD top1 | in-dist top1 |
+|---|---|---|---|
+| baseline | 27.6M | 0.4947 | 0.8072 |
+| mid | 14.7M | 0.5008 | 0.8089 |
+| small | 6.4M | 0.5119 | 0.8044 |
+| xsmall | 3.0M | 0.5120 | 0.8111 |
+| tiny | 1.4M | **0.5139** | 0.8014 |
+
+**Result:** OOD top1 rises **monotonically** as capacity shrinks 25M→1.4M (**+0.019**), at **zero in-dist
+cost** (ID flat ~0.80). No turnover yet at 1.4M. A clean confirmation of the memorise-vs-generalise thesis
+on our grammar (cf. Furrer et al. 2022, flat/negative OOD scaling for fine-tuned seq models). Modest in
+magnitude but real and consistent across all three folds.
+
+**Decision:** prefer a **small (~1–6M) model** for the OOD-deciding metric. (Confirm across seeds before
+treating the exact sweet spot as final.)
+
+### D3.2 — Validator-guided constrained decoding (h7) → **REJECTED**
+**Hypothesis:** the model leaks probability onto grammar-invalid steps OOD; masking invalid candidates at
+decode time (accuracy-safe — the true step is always valid) would convert top-5 reachability into top-1.
+
+**Experiment (`scripts/diag_constrained.py`, n=200/fold, no retrain):** bucket OOD top-1 errors into
+grammar-**invalid** argmax (recoverable by masking) vs grammar-**valid-but-wrong**.
+
+**Result:** only **~3% of OOD top-1 errors are grammar-invalid** (ic 3.1% / igbt 3.6% / mosfet 1.8%;
+in-dist 0%). **~97% are valid-but-wrong.** Masking cannot fix a valid-but-wrong pick → no OOD benefit.
+
+**Learning (important reframe):** the model **almost never emits an illegal step** even OOD — it picks the
+**wrong legal step**. So the OOD residual is genuine *transition-structure learning*, not a
+decoding/validity problem, and not (per D1) embedding placement or (below) data augmentation. This narrows
+the frontier sharply.
+
+### D3.3 — Cross-family recombination augmentation → **REJECTED**; NoPE → neutral
+- **Cross-family recombination** (GECA-style prefix(A)+suffix(B) splice, validator-filtered): 3-fold OOD
+  top1 0.4947→**0.4767 (−0.018)**, same top1-down/top5-up signature as the D1 desc-init negative. With NoPE
+  (augnope) 0.486. Augmentation **hurts** OOD here.
+- **NoPE** (no positional encoding vs RoPE): 0.4947→0.4983 (**+0.004**, neutral); a safe, free default but
+  not a driver.
+
+**Cumulative:** four independent levers that touch *data, embeddings, position, or decoding* all fail to
+move OOD top1 (desc-init, cross-family aug, NoPE, constrained decoding). The **one** lever that moved it was
+**removing capacity**. Open, still-promising directions (built or buildable as config knobs, not yet
+GPU-confirmed): Universal-Transformer **weight-sharing** (h2) and **family-dropout + UNKNOWN-row**
+conditioning (h4), both tested at the small base.
+
+**Process note (honesty):** during the run, intermittent scratch-tmpfs corruption produced garbled tool
+output; two unverified figures were briefly stated mid-session (a "0.531 @ 3M peak" and an "h7 ~52%
+recoverable") and then **retracted** — they never entered git or the results. All D3 numbers above are the
+authoritative on-disk values (`git` commit `c16a754`).
