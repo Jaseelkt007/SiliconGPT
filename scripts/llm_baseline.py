@@ -48,16 +48,23 @@ RULE_IDS = [
     "RULE_SHIP_BEFORE_TEST", "RULE_BACKSIDE_BEFORE_PASSIVATION",
 ]
 
-# Model IDs change often — override with --model. These are reasonable defaults only.
+# Defaults reflect May 2026 docs — verify in each dashboard; override with --model.
+# "no_think" = how to DISABLE reasoning per provider (applied unless --thinking is set).
 PROVIDERS = {
-    "openai":    {"base_url": None, "key": "OPENAI_API_KEY", "model": "gpt-4o", "kind": "openai"},
+    "openai":    {"base_url": None, "key": "OPENAI_API_KEY", "model": "gpt-5.5", "kind": "openai",
+                  "no_think": {"kwargs": {"reasoning_effort": "none"}}},
     "gemini":    {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
-                  "key": "GEMINI_API_KEY", "model": "gemini-2.5-pro", "kind": "openai"},
+                  "key": "GEMINI_API_KEY", "model": "gemini-3.5-flash", "kind": "openai",
+                  # gemini-3.5-flash cannot FULLY disable thinking; "minimal" is the floor.
+                  # Use gemini-2.5-flash + thinking_budget=0 if you need true zero.
+                  "no_think": {"extra_body": {"google": {"thinking_config": {"thinking_level": "minimal"}}}}},
     "kimi":      {"base_url": "https://api.moonshot.ai/v1", "key": "MOONSHOT_API_KEY",
-                  "model": "kimi-k2-0711-preview", "kind": "openai"},
-    "anthropic": {"base_url": None, "key": "ANTHROPIC_API_KEY", "model": "claude-sonnet-4-5",
-                  "kind": "anthropic"},
-    "mock":      {"base_url": None, "key": None, "model": "mock", "kind": "mock"},
+                  "model": "kimi-k2.6", "kind": "openai",
+                  # Kimi K2.6 thinks BY DEFAULT — must disable explicitly.
+                  "no_think": {"extra_body": {"thinking": {"type": "disabled"}}}},
+    "anthropic": {"base_url": None, "key": "ANTHROPIC_API_KEY", "model": "claude-sonnet-4-6",
+                  "kind": "anthropic", "no_think": {}},  # extended thinking off by default (omit param)
+    "mock":      {"base_url": None, "key": None, "model": "mock", "kind": "mock", "no_think": {}},
 }
 
 ANOMALY_SPEC = """
@@ -159,22 +166,32 @@ def _mock(task):
     return "IS_VALID: 1\nCONFIDENCE: 0.95\nRULE:"
 
 
-def query(provider, model, system, user, temperature, task):
+def query(provider, model, system, user, temperature, task, thinking=False):
     p = PROVIDERS[provider]
     if p["kind"] == "mock":
         return _mock(task)
+    nt = {} if thinking else p.get("no_think", {})        # disable reasoning unless --thinking
     if p["kind"] == "openai":
         from openai import OpenAI
         client = OpenAI(base_url=p["base_url"], api_key=os.environ[p["key"]])
-        r = client.chat.completions.create(
-            model=model, temperature=temperature,
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}])
+        kwargs = dict(nt.get("kwargs", {}))               # e.g. reasoning_effort=none (OpenAI)
+        eb = nt.get("extra_body")                          # e.g. gemini thinking_level / kimi thinking
+        msgs = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+        try:
+            r = client.chat.completions.create(model=model, temperature=temperature,
+                                               messages=msgs, extra_body=eb, **kwargs)
+        except Exception as e:                             # some reasoning models reject non-default temp
+            if "temperature" in str(e).lower():
+                r = client.chat.completions.create(model=model, messages=msgs, extra_body=eb, **kwargs)
+            else:
+                raise
         return r.choices[0].message.content
     if p["kind"] == "anthropic":
         import anthropic
         client = anthropic.Anthropic(api_key=os.environ[p["key"]])
+        extra = dict(nt.get("kwargs", {}))                 # opus-4-8: add effort="low" here if used
         r = client.messages.create(model=model, max_tokens=2048, temperature=temperature,
-                                   system=system, messages=[{"role": "user", "content": user}])
+                                   system=system, messages=[{"role": "user", "content": user}], **extra)
         return r.content[0].text
     raise ValueError(provider)
 
@@ -219,7 +236,7 @@ def parse_anomaly(text):
 # --------------------------------------------------------------------------- #
 # run
 # --------------------------------------------------------------------------- #
-def run_task(task, provider, model, limit, out_dir, temperature):
+def run_task(task, provider, model, limit, out_dir, temperature, thinking=False):
     steps = load_steps()
     steps_upper = {s.upper(): s for s in steps}
     system = build_system(task, steps)
@@ -231,7 +248,7 @@ def run_task(task, provider, model, limit, out_dir, temperature):
     latencies, results, completions = [], [], []
     for row in rows:
         t0 = time.time()
-        text = query(provider, model, system, build_user(task, row), temperature, task)
+        text = query(provider, model, system, build_user(task, row), temperature, task, thinking)
         latencies.append(time.time() - t0)
         if task == "nextstep":
             ranks = parse_nextstep(text, steps, steps_upper)
@@ -266,13 +283,15 @@ def main():
     ap.add_argument("--limit", type=int, default=200)
     ap.add_argument("--temperature", type=float, default=0.0)
     ap.add_argument("--out-dir", default=None)
+    ap.add_argument("--thinking", action="store_true",
+                    help="enable reasoning/thinking mode (default OFF for cost/speed)")
     args = ap.parse_args()
 
     model = args.model or PROVIDERS[args.provider]["model"]
     out_dir = Path(args.out_dir) if args.out_dir else ROOT / "extras" / "results" / f"baseline_{args.provider}"
     tasks = ["nextstep", "completion", "anomaly"] if args.task == "all" else [args.task]
     for t in tasks:
-        run_task(t, args.provider, model, args.limit, out_dir, args.temperature)
+        run_task(t, args.provider, model, args.limit, out_dir, args.temperature, args.thinking)
 
 
 if __name__ == "__main__":
