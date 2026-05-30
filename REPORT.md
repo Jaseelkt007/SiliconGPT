@@ -65,8 +65,40 @@ Checkpoint: best-on-val at **iter 4000, val_loss 0.3288** (V1.1 clean-eval run).
 | igbt | 358 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.933 |
 | ic | 301 | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 | 0.900 |
 
+**LM-only anomaly (the model's *own* evidence — perplexity threshold, no validator).** Reported beside
+the hybrid so the perfect hybrid F1 is honestly attributed to the deterministic checker, and the LM's
+intrinsic anomaly ability is shown separately. Threshold calibrated on `val_id` (one global cut).
+| family | n | acc | precision | recall | F1 | ROC-AUC | rule_attr |
+|---|---|---|---|---|---|---|---|
+| **ALL** | 1000 | 0.831 | 0.703 | 1.000 | 0.826 | **0.997** | n/a |
+| mosfet | 341 | 0.974 | 0.940 | 1.000 | 0.969 | 1.000 | n/a |
+| igbt | 358 | 0.972 | 0.937 | 1.000 | 0.968 | 1.000 | n/a |
+| ic | 301 | 0.502 | 0.423 | 1.000 | 0.595 | 1.000 | n/a |
+
+The LM **ranks** valid vs. rule-violating sequences essentially perfectly on its own — **ROC-AUC 0.997
+overall and 1.000 within every family** — strong evidence it learned process logic, not just the validator
+doing the work. The lower F1 (0.826) is purely a *single-threshold* effect: ic recipes have systematically
+higher perplexity (most-distinct family), so one global cut over-flags valid ic sequences (ic precision
+0.423 at recall 1.000) even though ic's ranking is perfect (AUC 1.000). A per-family threshold removes
+this; rule attribution is n/a for LM-only (that is the validator's role in the hybrid).
+
+### Validity (process-validity ≠ accuracy)
+Fraction of *generated* sequences passing all 10 rules (`scripts/measure_validity.py`, `best.pt`, n=300).
+A high-accuracy model can still emit rule-breaking sequences, so this is a separate, first-class axis.
+| regime | valid_frac | notes |
+|---|---|---|
+| greedy completion | **1.000** | prefix → greedy |
+| sampled completion (temp 1.0) | **1.000** | prefix → temperature sampling |
+| free generation (temp 1.0) | **0.997** | full recipe from `<BOS>`; 1/300 broke RULE_IMPLANT_NO_MASK |
+
+The base LM is already near-perfectly valid even under sampling — so RL's validity *headroom is tiny*
+(~0.3%, only in free generation). This reframes Phase B honestly: **constrained decoding** can *guarantee*
+the remaining 0.3% (accuracy-safe, weights unchanged), while RL's value is the "optimized" rung / RLVR
+demonstration rather than a large validity gain.
+
 Loss/accuracy curves: `extras/results/curves.png`. Raw log: `extras/results/train_log.csv`.
-Submission CSVs: `extras/results/{nextstep,completion,anomaly}.csv`.
+Submission CSVs: `extras/results/{nextstep,completion,anomaly}.csv`. LM-only anomaly:
+`extras/results/lmonly/anomaly.csv`.
 
 ### Task 4 — OOD generalization (the deciding metric)
 We train an identical model on **two families only** (mosfet + igbt; `--exclude-family ic`,
