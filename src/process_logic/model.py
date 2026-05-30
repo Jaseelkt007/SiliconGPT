@@ -117,7 +117,7 @@ class Block(nn.Module):
 
 
 class ProcessLM(nn.Module):
-    def __init__(self, cfg: ModelConfig):
+    def __init__(self, cfg: ModelConfig, emb_init=None):
         super().__init__()
         self.cfg = cfg
         self.tok = nn.Embedding(cfg.vocab_size, cfg.n_embd)
@@ -131,6 +131,9 @@ class ProcessLM(nn.Module):
         self.register_buffer("rope_cos", cos, persistent=False)
         self.register_buffer("rope_sin", sin, persistent=False)
         self.apply(self._init)
+        if emb_init is not None:  # description-init warm start (tied head inherits it)
+            with torch.no_grad():
+                self.tok.weight.copy_(torch.as_tensor(emb_init, dtype=self.tok.weight.dtype))
 
     @staticmethod
     def _init(m):

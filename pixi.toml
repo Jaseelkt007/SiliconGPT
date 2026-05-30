@@ -25,3 +25,5 @@ matplotlib = ">=3.10.9,<4"
 [pypi-dependencies]
 torch = ">=2.10.0, <3"
 wandb = ">=0.27.0, <0.28"
+# only needed on a login node to build emb_init.npz (scripts/build_emb_init.py); not used at train time
+sentence-transformers = ">=2.2, <6"

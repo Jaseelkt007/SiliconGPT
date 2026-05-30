@@ -220,3 +220,21 @@ Tip: put the repo + data + checkpoints on `$SCRATCH`. Point `train.py`/`predict.
 - [ ] baseline-vs-trained demo (side-by-side outputs on identical inputs)
 - [ ] `REPORT.md` filled (TL;DR, problem, approach, results, what worked/didn't, next steps)
 - [ ] repo runs from a clean checkout; `requirements.txt`/pixi present; no secrets
+
+## 12. Description-init + 3-fold OOD (V2 — implemented, ready to run)
+**Goal:** close the measured OOD gap (held-out ic: top1 0.789→0.451). Decomposition showed ~22% of ic next-step targets are *unseen-family tokens* kept at random init, and 100% of prefixes contain such tokens — so ~half the drop is mechanical. Description-init warm-starts each token's embedding from its **text** (name, optionally + description) via a frozen encoder, so unseen tokens land near related trained steps.
+
+1) Build the embedding file **on a login node** (internet needed once; not needed at train time):
+```bash
+pixi run python scripts/build_emb_init.py --vocab vocab.json --out emb_init.npz
+# richer text (optional): --descriptions <MOSFET_Longdescr.csv> <IGBT_Longdescr.csv> <IC_Longdescr.csv>
+```
+2) Train with it: `sbatch scripts/run_train.sh --emb-init emb_init.npz`
+
+3) **3-fold OOD — baseline vs description-init (the comparison that proves the lever):**
+```bash
+bash scripts/run_ood_3fold.sh                        # baseline (random init): holds out ic, igbt, mosfet
+EMB_INIT=emb_init.npz bash scripts/run_ood_3fold.sh  # with description-init
+pixi run python scripts/ood_summary.py               # after jobs finish: 3-fold table + average
+```
+Expect description-init to recover roughly **half-to-two-thirds** of the gap (the unseen-token part), not all — ic's novel *ordering* is the structural residual. Report both 3-fold averages in `REPORT.md`.

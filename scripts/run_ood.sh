@@ -26,6 +26,10 @@ CKPT_DIR="checkpoints/ood_${EXCLUDE}"
 OUT_DIR="extras/results/ood_${EXCLUDE}"
 mkdir -p "$OUT_DIR"
 
+# optional description-init warm start: EMB_INIT=emb_init.npz sbatch ... scripts/run_ood.sh
+EMB_INIT="${EMB_INIT:-}"
+EMB_ARG=""; [ -n "$EMB_INIT" ] && EMB_ARG="--emb-init $EMB_INIT"
+
 # W&B offline (sync from a login node afterwards: pixi run wandb sync wandb/latest-run)
 export WANDB_MODE="${WANDB_MODE:-offline}"
 export WANDB_PROJECT="${WANDB_PROJECT:-silicongpt}"
@@ -43,6 +47,7 @@ $PIXI_RUN python src/process_logic/train.py \
     --exclude-family "$EXCLUDE" \
     --ckpt-dir "$CKPT_DIR" \
     --out-dir "$OUT_DIR" \
+    $EMB_ARG \
     --wandb --run-name "ood-excl-${EXCLUDE}-${SLURM_JOB_ID:-local}"
 
 # 2) predict on the FULL eval files with the OOD model

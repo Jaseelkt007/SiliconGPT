@@ -5,16 +5,16 @@ wrote /leonardo/home/usertrain/a08trc15/SiliconGPT/extras/results/anomaly.csv
  WARN cache for Repodata at /leonardo/home/usertrain/a08trc15/.cache/rattler/cache/repodata is on a network/parallel filesystem (NFS/SMB/FUSE/BeeGFS/Lustre/GPFS/CephFS), redirected to /tmp/pixi-cache-a08trc15/repodata for this run. Set [cache.repodata] in config.toml or PIXI_CACHE_DIR to override, or [cache.netfs-redirect] = "never" to keep the original path.
 
 == Task 1 — Next-step ==
-  ALL     n=3600  top1=0.814 top3=0.998 top5=1.000 mrr=0.905
-  mosfet  n=1200  top1=0.821 top3=0.998 top5=1.000 mrr=0.909
-  igbt    n=1200  top1=0.825 top3=0.998 top5=1.000 mrr=0.911
-  ic      n=1200  top1=0.797 top3=0.996 top5=0.999 mrr=0.895
+  ALL     n=3600  top1=0.807 top3=0.997 top5=1.000 mrr=0.901
+  mosfet  n=1200  top1=0.812 top3=0.996 top5=1.000 mrr=0.904
+  igbt    n=1200  top1=0.821 top3=0.998 top5=1.000 mrr=0.909
+  ic      n=1200  top1=0.789 top3=0.996 top5=0.999 mrr=0.891
 
 == Task 2 — Completion ==
-  ALL     n=600   exact_match=0.002 norm_edit_dist=0.227 token_acc=0.403
-  mosfet  n=200   exact_match=0.005 norm_edit_dist=0.162 token_acc=0.463
-  igbt    n=200   exact_match=0.000 norm_edit_dist=0.228 token_acc=0.461
-  ic      n=200   exact_match=0.000 norm_edit_dist=0.291 token_acc=0.284
+  ALL     n=600   exact_match=0.002 norm_edit_dist=0.227 token_acc=0.400
+  mosfet  n=200   exact_match=0.005 norm_edit_dist=0.168 token_acc=0.459
+  igbt    n=200   exact_match=0.000 norm_edit_dist=0.233 token_acc=0.463
+  ic      n=200   exact_match=0.000 norm_edit_dist=0.279 token_acc=0.277
 
 == Task 3 — Anomaly ==
   ALL     n=1000  acc=1.000 precision=1.000 recall=1.000 f1=1.000 roc_auc=1.000 rule_attr=0.910

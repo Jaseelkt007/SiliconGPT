@@ -89,6 +89,8 @@ def main():
     ap.add_argument("--wandb-mode", default=None,
                     help="online | offline | disabled (sets WANDB_MODE; offline = log locally, "
                          "then `wandb sync` from a login node)")
+    ap.add_argument("--emb-init", default=None,
+                    help="path to emb_init.npz (description-init warm start; see scripts/build_emb_init.py)")
     args = ap.parse_args()
 
     cfg = load_yaml(args.config)
@@ -103,6 +105,8 @@ def main():
         cfg["wandb"] = True
     if args.wandb_mode:
         os.environ["WANDB_MODE"] = args.wandb_mode
+    if args.emb_init:
+        cfg["emb_init_file"] = args.emb_init
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
 
     if args.smoke:
@@ -133,7 +137,13 @@ def main():
     eval_batches = build_eval_batches(val_ex, vocab, batch_size=cfg["batch_size"],
                                       n_batches=cfg["eval_iters"], seed=cfg["seed"], balanced=True)
 
-    model = ProcessLM(ModelConfig(**mcfg)).to(device)
+    emb_init = None
+    if cfg.get("emb_init_file"):
+        from process_logic.emb_init import build_embedding_init
+        mat, n_sem = build_embedding_init(vocab, resolve(cfg["emb_init_file"]), mcfg["n_embd"], seed=cfg["seed"])
+        emb_init = torch.from_numpy(mat)
+        print(f"description-init: {n_sem}/{len(vocab)} tokens warm-started from {cfg['emb_init_file']}")
+    model = ProcessLM(ModelConfig(**mcfg), emb_init=emb_init).to(device)
     print(f"params={model.num_params()/1e6:.2f}M vocab={len(vocab)} device={device} "
           f"train={len(train_ex)} val={len(val_ex)} eval_batches={len(eval_batches)}")
 
