@@ -1,8 +1,7 @@
 
 [greedy completion] n=300  valid_frac=1.000
 
-[sampled completion (temp=1.0)] n=300  valid_frac=0.997
-   most-violated rules: [('RULE_LITHO_LEVEL_SKIP', 1), ('RULE_CMP_NO_DEP', 1)]
+[sampled completion (temp=1.0)] n=300  valid_frac=1.000
 
-[free generation (temp=1.0)] n=300  valid_frac=0.997
-   most-violated rules: [('RULE_IMPLANT_NO_MASK', 1)]
+[free generation (temp=1.0)] n=300  valid_frac=0.990
+   most-violated rules: [('RULE_IMPLANT_NO_MASK', 2), ('RULE_TEST_BEFORE_PASSIVATION', 1), ('RULE_BACKSIDE_BEFORE_PASSIVATION', 1), ('RULE_LITHO_LEVEL_SKIP', 1)]
