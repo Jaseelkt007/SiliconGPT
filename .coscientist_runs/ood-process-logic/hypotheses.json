@@ -1,0 +1,153 @@
+[
+  {
+    "id": "control_v2",
+    "summary": "prev-best baseline (no aug): ID top1 0.807 / 3-fold OOD top1 0.495",
+    "text": "",
+    "elo": 1184.0,
+    "status": "new",
+    "parents": [],
+    "origin": "",
+    "scores": {},
+    "empirical_status": "full",
+    "verdict": "neutral",
+    "vs_baseline": {
+      "ngram_top1_delta": 0.0464,
+      "prevbest_id_top1_delta": 0.0,
+      "prevbest_ood_top1_delta": 0.0
+    },
+    "experiment": "experiments/control_v2.json"
+  },
+  {
+    "id": "aug_xfam",
+    "summary": "cross_family_recomb augmentation: OOD top1 0.477 (-0.018) REJECTED",
+    "text": "",
+    "elo": 1185.4,
+    "status": "new",
+    "parents": [],
+    "origin": "",
+    "scores": {},
+    "empirical_status": "full",
+    "verdict": "neutral",
+    "vs_baseline": {
+      "ngram_top1_delta": 0.0431,
+      "prevbest_id_top1_delta": -0.0033,
+      "prevbest_ood_top1_delta": -0.018
+    },
+    "experiment": "experiments/aug_xfam.json"
+  },
+  {
+    "id": "h1",
+    "summary": "NoPE: replace RoPE with no positional encoding to remove position shortcuts and force content/causal-driven ordering (OOD lever)",
+    "category": "architecture/positional-encoding",
+    "text": "Replace RoPE with NoPE (Kazemnejad et al. NeurIPS 2023). RoPE lets the model lean on family-specific positional regularities (a shortcut absent for an unseen 4th family). A causal decoder computes position implicitly; NoPE is empirically better on length/compositional OOD when test length <= train length (true here, ~155 steps). Targets the rank-1 decision: ordering must come from content-conditioned transitions shared across families, predicting a TOP-1 gain (opposite of the rejected levers' top5-only signature). Prediction: 3-fold OOD top1 0.495 -> 0.52-0.56, in-dist within -0.01. CONFIG-EXPRESSIBLE TODAY: model.pos_encoding=nope (already wired; currently in the running levers job).",
+    "elo": 1200.7,
+    "status": "reviewed",
+    "parents": [],
+    "origin": "generation:round1",
+    "scores": {},
+    "empirical_status": "full",
+    "verdict": "neutral",
+    "vs_baseline": {
+      "ngram_top1_delta": 0.0525,
+      "prevbest_id_top1_delta": 0.0061,
+      "prevbest_ood_top1_delta": 0.0036
+    },
+    "experiment": "experiments/h1.json"
+  },
+  {
+    "id": "h2",
+    "summary": "Universal-Transformer weight sharing across depth: one block applied N times to impose an iterative family-agnostic transition operator",
+    "category": "architecture/weight-sharing",
+    "text": "Share a single decoder block across depth (Dehghani et al. ICLR 2019; Csordas et al. 2021). Independent layers can memorize per-family instantiations (OOD-fragile shortcut); a shared update rule must learn the generic transition operator applying to any family incl. the unseen one. Control at MATCHED param count (widen the shared block). Prediction: 3-fold OOD top1 > 0.52, in-dist within -0.015. NEEDS CODE: model.weight_sharing(bool) + optional n_unique_layers; reuse one Block in the depth loop (small diff).",
+    "elo": 1216.0,
+    "status": "reviewed",
+    "parents": [],
+    "origin": "generation:round1",
+    "scores": {}
+  },
+  {
+    "id": "h3",
+    "summary": "QK-normalization + lower attention temperature to sharpen content-addressed attention for systematic OOD transition lookup",
+    "category": "architecture/attention-regularization",
+    "text": "Add QK-norm (RMSNorm on q,k before the dot product) per Csordas et al. 2021 systematic-generalization tricks. Crisp content-addressed attention ('after step X of stage S attend to the stage-defining context') generalizes the governing-step lookup to novel steps in the same structural role; diffuse attention interpolates over memorized family keys and mis-ranks OOD. Directly converts top-5 reachability into top-1. Prediction: OOD top1 0.52-0.55, in-dist unchanged; top1 moves MORE than top5. NEEDS CODE: model.qk_norm(bool) (few lines in Attention) + optional attn_temp.",
+    "elo": 1168.0,
+    "status": "reviewed",
+    "parents": [],
+    "origin": "generation:round1",
+    "scores": {}
+  },
+  {
+    "id": "h4",
+    "summary": "Family-dropout conditioning with an UNKNOWN_FAMILY row: additive family embedding dropped ~15-30% to UNKNOWN so the family-agnostic pathway is the OOD default",
+    "category": "family-conditioning",
+    "text": "Add a 4-row family embedding (mosfet/igbt/ic/UNKNOWN) to token inputs; during training replace the true row with UNKNOWN with prob p_drop. Held-out family is presented as UNKNOWN at test. UNKNOWN, seen across all families, encodes the family-agnostic grammar (cf. classifier-free-guidance conditioning dropout; DANN). Naive always-on conditioning HURTS OOD (routes each decision through a family-specific subcircuit with no pathway for an unseen family); dropout forces a genuine P(next|prefix,UNKNOWN). Dose-response: p_drop=0 should hurt vs baseline, p_drop~0.2-0.5 help, p_drop=1 -> current model. Prediction: OOD top1 0.52-0.55, in-dist >=0.80. NEEDS CODE: model.family_conditioning(bool)+model.family_dropout(float); family id already in data (~30-40 lines).",
+    "elo": 1217.3,
+    "status": "reviewed",
+    "parents": [],
+    "origin": "generation:round1",
+    "scores": {}
+  },
+  {
+    "id": "h5",
+    "summary": "Adversarial family head (gradient reversal) making the LM-feeding representation family-INVARIANT, with a non-adversarial probe as a matched control",
+    "category": "training-objective/multi-task",
+    "text": "Two heads on the shared backbone: next-step LM head + a family classifier through a Gradient Reversal Layer (DANN, Ganin 2016) so the backbone makes family hard to decode from LM features -> next-step decision rides on family-agnostic structural cues. Run adversarial vs naive(non-adversarial) auxiliary head as a controlled test of the shortcut hypothesis: predict adversarial OOD top1 > 0.52 (in-dist within -0.015, family still probeable >0.9), naive head <= baseline. NEEDS CODE: aux family head + optional GRL (model.aux_family_head, model.family_grl_lambda), pooled-prefix family target, combined loss (~50-70 lines); GRL needs lambda warmup.",
+    "elo": 1184.1,
+    "status": "reviewed",
+    "parents": [],
+    "origin": "generation:round1",
+    "scores": {}
+  },
+  {
+    "id": "h6",
+    "summary": "Stage-aligned supervised-contrastive loss: pull together hidden states of the same grammar STAGE across families, push apart different stages",
+    "category": "training-objective/contrastive-invariance",
+    "text": "Map each step to a coarse process stage (clean/deposit/litho/etch/implant/CMP/passivation/test) from the grammar/step names; add SupCon (Khosla 2020) on per-step hidden states (positives=same stage across DIFFERENT families). Builds a family-invariant 'position in process' geometry so a never-seen held-out step in a known stage role lands correctly and routes through the shared transition operator \u2014 converting top-5 reachability to top-1. Built-in diagnostic: linear-probe stage accuracy on the held-out family (>0.85 expected) localizes whether the residual is representation or transition-head. Prediction: OOD top1 0.53-0.57 (strongest if labels clean), in-dist within -0.01. NEEDS CODE: stage labeler (from generation.py) + SupCon in train.py + model.aux_contrastive+contrastive_weight (~60-90 lines).",
+    "elo": 1167.3,
+    "status": "reviewed",
+    "parents": [],
+    "origin": "generation:round1",
+    "scores": {}
+  },
+  {
+    "id": "h7",
+    "summary": "Validator-guided constrained decoding: mask grammar-invalid next-steps at inference, accuracy-safe, converting OOD top-5 reachability into top-1/completion",
+    "category": "inference/constrained-decoding",
+    "text": "At each decode step mask logits of candidates that would violate the 10 grammar rules given the prefix. The true next step is always valid, so masking only removes wrong options -> accuracy-safe (top-1 can only hold/improve). In-dist the model already suppresses invalid steps (near-saturated, small gain); OOD it leaks probability onto invalid steps (large gain) -> the ID-vs-OOD gain gap is the evidence. Diagnostic FIRST: fraction of OOD top-1 errors whose argmax is grammar-INVALID (recoverable) vs valid-but-wrong; predict >=30-50% OOD vs <10% in-dist. Prediction: constrained OOD top1 0.55-0.62, in-dist <+0.01; OOD completion token-acc up from 0.17. NEEDS CODE: decode-time masking in generate.py wrapping the validator's per-rule predicate; locally-checkable rules first (~60-100 lines), decode.constrained=true.",
+    "elo": 1231.3,
+    "status": "reviewed",
+    "parents": [],
+    "origin": "generation:round1",
+    "scores": {}
+  },
+  {
+    "id": "h8",
+    "summary": "Model-size sweep: test whether SMALLER models generalize better OOD by lacking capacity to memorize per-family shortcuts",
+    "category": "scaling/capacity",
+    "text": "In-dist is saturated (trigram nearly ties the 25M model) -> excess capacity likely spent memorizing family-specific surface stats. Sweep ~5M/15M/25M/50M, plot 3-fold OOD top1 vs size. Since in-dist is flat across sizes, any size-dependence of the ID->OOD GAP isolates the capacity-shortcut effect. Prediction: ~5-15M achieve OOD top1 >= 0.495 (maybe 0.51-0.54) at in-dist >=0.80; 50M equal-or-worse OOD. Refutation: monotone increase with size => capacity not the bottleneck. CONFIG-EXPRESSIBLE TODAY: model.n_layer/model.n_embd (the 'small' arm is in the running levers job). Calibrates the base size for every other lever.",
+    "elo": 1261.2,
+    "status": "reviewed",
+    "parents": [],
+    "origin": "generation:round1",
+    "scores": {},
+    "empirical_status": "full",
+    "verdict": "improves-ood",
+    "vs_baseline": {
+      "ngram_top1_delta": 0.0436,
+      "prevbest_id_top1_delta": -0.0028,
+      "prevbest_ood_top1_delta": 0.0172
+    },
+    "experiment": "experiments/h8.json"
+  },
+  {
+    "id": "h9",
+    "summary": "Test-time training on the eval prefix: a few self-supervised LM gradient steps adapt to the unseen family before predicting",
+    "category": "inference/test-time-adaptation",
+    "text": "TTT (Sun et al. 2020): per OOD example, do K (5-20) gradient steps of the next-token LM objective on the given 115-155-step prefix (adapting only RMSNorm gains / last layer), then predict the next step / complete. The eval prefix is itself a sample of the unseen family's transitions \u2014 TTT extracts the family-specific ordering knowledge unavailable at train time. In-dist gain ~0 (already known) -> ID-vs-OOD gap is the evidence. Prediction: OOD top1 0.53-0.58 (inverted-U in K), in-dist <+0.01, strongest on completion (0.17 up). NEEDS CODE: TTT inference wrapper (clone weights, inner SGD on prefix, predict, restore) decode.ttt_steps/ttt_lr/ttt_params (~80-120 lines); cost = K steps/example.",
+    "elo": 1184.7,
+    "status": "reviewed",
+    "parents": [],
+    "origin": "generation:round1",
+    "scores": {}
+  }
+]

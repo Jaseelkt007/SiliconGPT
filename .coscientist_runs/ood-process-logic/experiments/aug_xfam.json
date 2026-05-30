@@ -1,0 +1,140 @@
+{
+  "id": "aug_xfam",
+  "title": "cross_family_recomb augmentation, 3-fold OOD",
+  "tier": "full",
+  "status": "done",
+  "device": "cuda",
+  "config": {
+    "overrides": {
+      "data.augmentation": "cross_family_recomb",
+      "data.aug_ratio": 0.15,
+      "data.aug_cap": 6000
+    },
+    "folds": [
+      "ic",
+      "igbt",
+      "mosfet"
+    ],
+    "max_eval_per_family": null
+  },
+  "train": {
+    "id": {
+      "final_val_loss": 0.3294,
+      "wall_s": 197.9
+    },
+    "ood": {
+      "ic": {
+        "final_val_loss": 0.3094,
+        "wall_s": 200.4
+      },
+      "igbt": {
+        "final_val_loss": 0.3367,
+        "wall_s": 180.0
+      },
+      "mosfet": {
+        "final_val_loss": 0.3358,
+        "wall_s": 201.8
+      }
+    }
+  },
+  "metrics": {
+    "id": {
+      "nextstep": {
+        "top1": 0.8039,
+        "top3": 0.9956,
+        "top5": 0.9997,
+        "mrr": 0.8989,
+        "n": 3600
+      },
+      "completion": {
+        "exact_match": 0.0017,
+        "norm_edit_dist": 0.2278,
+        "token_acc": 0.4016,
+        "n": 600
+      }
+    },
+    "ood": {
+      "nextstep": {
+        "top1": 0.4767,
+        "top3": 0.6697,
+        "top5": 0.6875,
+        "mrr": 0.5709,
+        "n_folds": 3
+      },
+      "completion": {
+        "exact_match": 0.0,
+        "norm_edit_dist": 0.517,
+        "token_acc": 0.1784,
+        "n_folds": 3
+      }
+    },
+    "ood_per_fold": {
+      "ic": {
+        "nextstep": {
+          "top1": 0.4308,
+          "top3": 0.6308,
+          "top5": 0.6517,
+          "mrr": 0.5303,
+          "n": 1200
+        },
+        "completion": {
+          "exact_match": 0.0,
+          "norm_edit_dist": 0.4836,
+          "token_acc": 0.1718,
+          "n": 200
+        }
+      },
+      "igbt": {
+        "nextstep": {
+          "top1": 0.4667,
+          "top3": 0.6717,
+          "top5": 0.6942,
+          "mrr": 0.5658,
+          "n": 1200
+        },
+        "completion": {
+          "exact_match": 0.0,
+          "norm_edit_dist": 0.5526,
+          "token_acc": 0.2242,
+          "n": 200
+        }
+      },
+      "mosfet": {
+        "nextstep": {
+          "top1": 0.5325,
+          "top3": 0.7067,
+          "top5": 0.7167,
+          "mrr": 0.6166,
+          "n": 1200
+        },
+        "completion": {
+          "exact_match": 0.0,
+          "norm_edit_dist": 0.5148,
+          "token_acc": 0.1391,
+          "n": 200
+        }
+      }
+    },
+    "ood_detect": {
+      "auroc": 1.0,
+      "per_fold": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "baselines": {
+    "ngram_top1": 0.7608,
+    "ngram_token_acc": 0.2827,
+    "prevbest_id_top1": 0.8072,
+    "prevbest_id_token_acc": 0.3996,
+    "prevbest_ood_top1": 0.4947
+  },
+  "vs_baseline": {
+    "ngram_top1_delta": 0.0431,
+    "prevbest_id_top1_delta": -0.0033,
+    "prevbest_ood_top1_delta": -0.018
+  },
+  "verdict": "neutral"
+}

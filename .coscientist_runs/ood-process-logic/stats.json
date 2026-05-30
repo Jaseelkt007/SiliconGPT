@@ -1,0 +1,4 @@
+{"round": 1, "hypotheses": 11, "measured_full": 4, "improves_ood": 1, "rejected": 1, "neutral": 2,
+ "top_elo": 1261.2, "top_id": "h8", "experiments_run": 4,
+ "discovery": "scale-down to ~6M improves 3-fold OOD top1 +0.017 (0.495->0.512), completion +30pct rel, ID flat",
+ "tier2_queue": ["h8-extend-scaling", "h7-constrained-decode-diagnostic", "h4-family-dropout", "h2-weight-sharing"]}

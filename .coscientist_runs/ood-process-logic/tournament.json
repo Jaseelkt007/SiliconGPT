@@ -1,0 +1,500 @@
+{
+  "elo": {
+    "control_v2": 1184.0,
+    "aug_xfam": 1185.4,
+    "h1": 1200.7,
+    "h2": 1216.0,
+    "h3": 1168.0,
+    "h4": 1217.3,
+    "h5": 1184.1,
+    "h6": 1167.3,
+    "h7": 1231.3,
+    "h8": 1261.2,
+    "h9": 1184.7
+  },
+  "matches": [
+    {
+      "round": 1,
+      "a": "h8",
+      "b": "control_v2",
+      "type": "debate",
+      "winner": "h8",
+      "k": 32.0
+    },
+    {
+      "round": 1,
+      "a": "h8",
+      "b": "h1",
+      "type": "single",
+      "winner": "h8",
+      "k": 32.0
+    },
+    {
+      "round": 1,
+      "a": "h8",
+      "b": "aug_xfam",
+      "type": "single",
+      "winner": "h8",
+      "k": 32.0
+    },
+    {
+      "round": 1,
+      "a": "h7",
+      "b": "h2",
+      "type": "debate",
+      "winner": "h7",
+      "k": 32.0
+    },
+    {
+      "round": 1,
+      "a": "h7",
+      "b": "h4",
+      "type": "debate",
+      "winner": "h7",
+      "k": 32.0
+    },
+    {
+      "round": 1,
+      "a": "h4",
+      "b": "h6",
+      "type": "single",
+      "winner": "h4",
+      "k": 32.0
+    },
+    {
+      "round": 1,
+      "a": "h2",
+      "b": "h6",
+      "type": "single",
+      "winner": "h2",
+      "k": 32.0
+    },
+    {
+      "round": 1,
+      "a": "h8",
+      "b": "h7",
+      "type": "debate",
+      "winner": "h8",
+      "k": 32.0
+    },
+    {
+      "round": 1,
+      "a": "h7",
+      "b": "h9",
+      "type": "single",
+      "winner": "h7",
+      "k": 32.0
+    },
+    {
+      "round": 1,
+      "a": "h4",
+      "b": "h5",
+      "type": "single",
+      "winner": "h4",
+      "k": 32.0
+    },
+    {
+      "round": 1,
+      "a": "h2",
+      "b": "h3",
+      "type": "single",
+      "winner": "h2",
+      "k": 32.0
+    },
+    {
+      "round": 1,
+      "a": "h1",
+      "b": "h3",
+      "type": "single",
+      "winner": "h1",
+      "k": 32.0
+    }
+  ],
+  "proximity": {},
+  "experiments": {
+    "control_v2": {
+      "tier": "full",
+      "verdict": "neutral",
+      "vs_baseline": {
+        "ngram_top1_delta": 0.0464,
+        "prevbest_id_top1_delta": 0.0,
+        "prevbest_ood_top1_delta": 0.0
+      },
+      "metrics": {
+        "id": {
+          "nextstep": {
+            "top1": 0.8072,
+            "top3": 0.9967,
+            "top5": 0.9997,
+            "mrr": 0.9013,
+            "n": 3600
+          },
+          "completion": {
+            "exact_match": 0.0017,
+            "norm_edit_dist": 0.2267,
+            "token_acc": 0.3996,
+            "n": 600
+          }
+        },
+        "ood": {
+          "nextstep": {
+            "top1": 0.4947,
+            "top3": 0.6617,
+            "top5": 0.6745,
+            "mrr": 0.5778,
+            "n_folds": 3
+          },
+          "completion": {
+            "exact_match": 0.0,
+            "norm_edit_dist": 0.5168,
+            "token_acc": 0.17,
+            "n_folds": 3
+          }
+        },
+        "ood_per_fold": {
+          "ic": {
+            "nextstep": {
+              "top1": 0.4508,
+              "top3": 0.6075,
+              "top5": 0.6225,
+              "mrr": 0.5299,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.4881,
+              "token_acc": 0.1692,
+              "n": 200
+            }
+          },
+          "igbt": {
+            "nextstep": {
+              "top1": 0.4842,
+              "top3": 0.6542,
+              "top5": 0.6742,
+              "mrr": 0.5696,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.5357,
+              "token_acc": 0.1922,
+              "n": 200
+            }
+          },
+          "mosfet": {
+            "nextstep": {
+              "top1": 0.5492,
+              "top3": 0.7233,
+              "top5": 0.7267,
+              "mrr": 0.6338,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.5267,
+              "token_acc": 0.1485,
+              "n": 200
+            }
+          }
+        },
+        "ood_detect": {
+          "auroc": 1.0,
+          "per_fold": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      }
+    },
+    "aug_xfam": {
+      "tier": "full",
+      "verdict": "neutral",
+      "vs_baseline": {
+        "ngram_top1_delta": 0.0431,
+        "prevbest_id_top1_delta": -0.0033,
+        "prevbest_ood_top1_delta": -0.018
+      },
+      "metrics": {
+        "id": {
+          "nextstep": {
+            "top1": 0.8039,
+            "top3": 0.9956,
+            "top5": 0.9997,
+            "mrr": 0.8989,
+            "n": 3600
+          },
+          "completion": {
+            "exact_match": 0.0017,
+            "norm_edit_dist": 0.2278,
+            "token_acc": 0.4016,
+            "n": 600
+          }
+        },
+        "ood": {
+          "nextstep": {
+            "top1": 0.4767,
+            "top3": 0.6697,
+            "top5": 0.6875,
+            "mrr": 0.5709,
+            "n_folds": 3
+          },
+          "completion": {
+            "exact_match": 0.0,
+            "norm_edit_dist": 0.517,
+            "token_acc": 0.1784,
+            "n_folds": 3
+          }
+        },
+        "ood_per_fold": {
+          "ic": {
+            "nextstep": {
+              "top1": 0.4308,
+              "top3": 0.6308,
+              "top5": 0.6517,
+              "mrr": 0.5303,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.4836,
+              "token_acc": 0.1718,
+              "n": 200
+            }
+          },
+          "igbt": {
+            "nextstep": {
+              "top1": 0.4667,
+              "top3": 0.6717,
+              "top5": 0.6942,
+              "mrr": 0.5658,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.5526,
+              "token_acc": 0.2242,
+              "n": 200
+            }
+          },
+          "mosfet": {
+            "nextstep": {
+              "top1": 0.5325,
+              "top3": 0.7067,
+              "top5": 0.7167,
+              "mrr": 0.6166,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.5148,
+              "token_acc": 0.1391,
+              "n": 200
+            }
+          }
+        },
+        "ood_detect": {
+          "auroc": 1.0,
+          "per_fold": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      }
+    },
+    "h1": {
+      "tier": "full",
+      "verdict": "neutral",
+      "vs_baseline": {
+        "ngram_top1_delta": 0.0525,
+        "prevbest_id_top1_delta": 0.0061,
+        "prevbest_ood_top1_delta": 0.0036
+      },
+      "metrics": {
+        "id": {
+          "nextstep": {
+            "top1": 0.8133,
+            "top3": 0.9961,
+            "top5": 0.9997,
+            "mrr": 0.904,
+            "n": 3600
+          },
+          "completion": {
+            "exact_match": 0.0033,
+            "norm_edit_dist": 0.2291,
+            "token_acc": 0.4001,
+            "n": 600
+          }
+        },
+        "ood": {
+          "nextstep": {
+            "top1": 0.4983,
+            "top3": 0.6647,
+            "top5": 0.6767,
+            "mrr": 0.5817,
+            "n_folds": 3
+          },
+          "completion": {
+            "exact_match": 0.0,
+            "norm_edit_dist": 0.4316,
+            "token_acc": 0.1713,
+            "n_folds": 3
+          }
+        },
+        "ood_per_fold": {
+          "ic": {
+            "nextstep": {
+              "top1": 0.45,
+              "top3": 0.6225,
+              "top5": 0.6358,
+              "mrr": 0.5371,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.4835,
+              "token_acc": 0.1749,
+              "n": 200
+            }
+          },
+          "igbt": {
+            "nextstep": {
+              "top1": 0.505,
+              "top3": 0.6642,
+              "top5": 0.675,
+              "mrr": 0.5829,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.3227,
+              "token_acc": 0.2007,
+              "n": 200
+            }
+          },
+          "mosfet": {
+            "nextstep": {
+              "top1": 0.54,
+              "top3": 0.7075,
+              "top5": 0.7192,
+              "mrr": 0.625,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.4887,
+              "token_acc": 0.1384,
+              "n": 200
+            }
+          }
+        },
+        "ood_detect": {
+          "auroc": 1.0,
+          "per_fold": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      }
+    },
+    "h8": {
+      "tier": "full",
+      "verdict": "improves-ood",
+      "vs_baseline": {
+        "ngram_top1_delta": 0.0436,
+        "prevbest_id_top1_delta": -0.0028,
+        "prevbest_ood_top1_delta": 0.0172
+      },
+      "metrics": {
+        "id": {
+          "nextstep": {
+            "top1": 0.8044,
+            "top3": 0.9964,
+            "top5": 0.9997,
+            "mrr": 0.8999,
+            "n": 3600
+          },
+          "completion": {
+            "exact_match": 0.0,
+            "norm_edit_dist": 0.2232,
+            "token_acc": 0.4039,
+            "n": 600
+          }
+        },
+        "ood": {
+          "nextstep": {
+            "top1": 0.5119,
+            "top3": 0.6728,
+            "top5": 0.6914,
+            "mrr": 0.5942,
+            "n_folds": 3
+          },
+          "completion": {
+            "exact_match": 0.0,
+            "norm_edit_dist": 0.378,
+            "token_acc": 0.2212,
+            "n_folds": 3
+          }
+        },
+        "ood_per_fold": {
+          "ic": {
+            "nextstep": {
+              "top1": 0.4633,
+              "top3": 0.6442,
+              "top5": 0.6617,
+              "mrr": 0.5551,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.4855,
+              "token_acc": 0.1814,
+              "n": 200
+            }
+          },
+          "igbt": {
+            "nextstep": {
+              "top1": 0.5133,
+              "top3": 0.67,
+              "top5": 0.68,
+              "mrr": 0.5907,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.3943,
+              "token_acc": 0.2095,
+              "n": 200
+            }
+          },
+          "mosfet": {
+            "nextstep": {
+              "top1": 0.5592,
+              "top3": 0.7042,
+              "top5": 0.7325,
+              "mrr": 0.6367,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.2541,
+              "token_acc": 0.2727,
+              "n": 200
+            }
+          }
+        },
+        "ood_detect": {
+          "auroc": 1.0,
+          "per_fold": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      }
+    }
+  }
+}
