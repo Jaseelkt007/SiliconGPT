@@ -146,3 +146,29 @@ mis-ranks, raise the smoke config (more iters / dim) until it tracks. Document t
 - One commit per experiment (clean revert); benchmark is the final judge.
 - Hard constraints in the rubric keep Generation from proposing big-LLM / non-sovereign ideas.
 - Token budget for the autonomous loop set per round.
+
+## 12. Model allocation — which Claude runs each agent (decided 2026-05-30: TIERED)
+Quality scales with rounds (the paper's core finding); Opus is slower, so put the best model where reasoning
+**decides the outcome** and a fast model on the **mechanical** agents → more rounds inside the deadline. NB:
+the **agent LLM ≠ the trained model** — the GPU does the training; the agent LLM only orchestrates/reasons.
+
+**Session:** launch the server session on **Opus 4.8** → the Supervisor and any *inherited* subagent default
+to it. Run with **extended thinking ON**. Reasoning *effort* is **session-level + prompt-elicited**, NOT a
+per-subagent dial (the `Agent` tool exposes `model`, not effort) — the rich agent prompts do the work.
+
+**Per-agent** (the Supervisor passes `model=` on each `Agent` call; values: `opus`/`sonnet`/`haiku`):
+| Agent / mode | Model |
+|---|---|
+| Supervisor (main loop) | **opus** (4.8, session) |
+| Generation | **opus** |
+| Reflection — full + deep-verification | **opus** |
+| Reflection — quick initial filter | sonnet |
+| Ranking — multi-turn debate (top pairs) | **opus** |
+| Ranking — single-turn (low-stakes pairs) | sonnet |
+| Evolution | **opus** |
+| Meta-review | **opus** |
+| Experiment | sonnet (escalate ambiguous triage / new-task design to the Supervisor) |
+| Proximity | haiku |
+
+**Implement:** in the lab's `SKILL.md` orchestration section, set `model=` per the table on every `Agent`
+spawn (mode-dependent for Reflection and Ranking). Part of the wiring/build step (§10 / §1 of the checklist).
