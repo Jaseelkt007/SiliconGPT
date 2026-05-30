@@ -1,12 +1,13 @@
 """Dataset + batching for next-token training on process sequences.
 
-Core logic (CSV loading + numpy collation) is torch-free and unit-testable.
-The torch DataLoader wrapper imports torch lazily, so this module imports fine
-on machines without torch (we train on the GPU server).
+Core logic (CSV loading + numpy collation + eval-batch construction) is torch-free
+and unit-testable. The torch DataLoader wrapper imports torch lazily, so this module
+imports fine on machines without torch (we train on the GPU server).
 """
 from __future__ import annotations
 
 import csv
+import random as _random
 from pathlib import Path
 
 import numpy as np
@@ -44,6 +45,46 @@ def collate_ids(batch_ids, pad_id, ignore_index=IGNORE_INDEX):
         attention_mask[i, :L] = 1
         labels[i, :L] = ids
     return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels}
+
+
+def _round_robin_by_family(examples, seed):
+    """Interleave examples across families so any prefix is family-balanced."""
+    rng = _random.Random(seed)
+    by_fam = {}
+    for e in examples:
+        by_fam.setdefault(e[0], []).append(e)
+    for v in by_fam.values():
+        rng.shuffle(v)
+    its = [iter(v) for v in by_fam.values()]
+    merged, alive = [], True
+    while alive:
+        alive = False
+        for it in its:
+            nxt = next(it, None)
+            if nxt is not None:
+                merged.append(nxt)
+                alive = True
+    return merged
+
+
+def build_eval_batches(examples, vocab, batch_size, n_batches=None, seed=0,
+                       balanced=True, add_bos=True, add_eos=True):
+    """Build a FIXED list of collated numpy batches for stable, unbiased validation.
+
+    Without this, evaluating a family-blocked val set with a cycling loader produces a
+    family-biased (noisy) metric. We interleave families and freeze the batch list so
+    every eval scores the exact same, balanced sample.
+    """
+    ex = _round_robin_by_family(examples, seed) if balanced else list(examples)
+    if not balanced:
+        _random.Random(seed).shuffle(ex)
+    enc = [vocab.encode(s, add_bos=add_bos, add_eos=add_eos) for _, s in ex]
+    batches = []
+    for i in range(0, len(enc), batch_size):
+        batches.append(collate_ids(enc[i:i + batch_size], vocab.pad_id))
+        if n_batches and len(batches) >= n_batches:
+            break
+    return batches
 
 
 def make_dataloader(examples, vocab, batch_size=64, shuffle=True,

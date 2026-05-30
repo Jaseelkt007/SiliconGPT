@@ -18,6 +18,16 @@
 
 ---
 
+## 0b. V1.1 instrumentation (already applied — verify with the health test)
+After the first training run we added (see git log):
+- **Stable validation:** `dataset.build_eval_batches` builds a FIXED, family-balanced eval set — fixes the earlier family-blocked, noisy metric (top-1 oscillating 0.78↔0.82 was a *sampling artifact*, not instability).
+- **Early stopping** (`patience`) + `max_iters` lowered to 4000 (grammar saturates by ~iter 500). NOTE: there was **no overfitting** (train≈val); this only stops wasting compute.
+- **W&B logging** — flag-gated (`wandb: true` in config; on compute nodes use `WANDB_MODE=offline`, sync from a login node). Grad-norm now logged too.
+- **OOD experiment:** `train.py --exclude-family ic` trains/vals WITHOUT a family for the held-out OOD test.
+- **Health test** `tests/test_health.py` — verifies **causal attention (no future leakage)**, RoPE, RMSNorm, weight-tying, dataloader shapes/padding/ground-truth alignment, **per-parameter gradient flow**, and weight updates. **Run it before trusting any training run.**
+
+Confirmed-correct facts (baked into the health test): attention is **causal** via `F.scaled_dot_product_attention(..., is_causal=True)` (PyTorch fused/FlashAttention; RoPE/RMSNorm/SwiGLU hand-written, no HF/x-transformers). Loss = next-token CE with internal shift + `ignore_index=-100`. Right-padding ⇒ no manual padding mask needed.
+
 ## 1. Mission & objective
 **Hackathon:** Zero One Hack_01 — **Industrial AI / Infineon** track, "Learning & Benchmarking Process Logic." Compute = Leonardo (CINECA) A100s. **Deadline: submit by Sunday 10:00** (Tally form).
 
@@ -158,6 +168,10 @@ pixi run python tests/test_vocab.py && pixi run python tests/test_dataset.py && 
 # If this fails, fix the runtime bug it surfaces before anything else.
 pixi run python src/process_logic/train.py --smoke --device cpu
 # also: pixi run python tests/test_model.py && pixi run python tests/test_generate.py
+# FULL HEALTH CHECK (causality / RoPE / RMSNorm / grad-flow / padding / GT alignment / weight-update):
+pixi run python tests/test_health.py                       # architecture (fresh model)
+# (after a run) inspect the trained model too — synonym-embedding cosine etc.:
+pixi run python tests/test_health.py --ckpt checkpoints/best.pt
 
 # --- full training on a GPU node ---
 sbatch scripts/run_train.sh                     # watch: squeue --me ; tail -f slurm-<id>.out

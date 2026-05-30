@@ -11,8 +11,8 @@ ckpt_dir: checkpoints
 
 # optimization
 batch_size: 64
-max_iters: 20000
-warmup_iters: 200
+max_iters: 4000          # the grammar saturates by ~iter 500; early stopping ends it sooner
+warmup_iters: 100
 lr: 0.0006
 min_lr: 0.00006
 weight_decay: 0.1
@@ -20,7 +20,12 @@ beta1: 0.9
 beta2: 0.95
 grad_clip: 1.0
 
-# evaluation / logging
-eval_interval: 500
-eval_iters: 50
+# evaluation / early stopping / logging
+eval_interval: 200
+eval_iters: 50           # number of FIXED family-balanced val batches scored each eval
+patience: 8              # stop after this many evals with no val_loss improvement
 log_interval: 50
+
+# Weights & Biases (set true to enable; on Leonardo compute nodes use WANDB_MODE=offline)
+wandb: false
+wandb_project: silicongpt
