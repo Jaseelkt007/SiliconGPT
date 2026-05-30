@@ -77,6 +77,12 @@ V1 complete + validated. V2 exploration (see `DECISIONS.md`, `V2_RL_PLAN.md`, `e
 - **Benchmark result:** ours ≳ n-gram ≫ Gemini **in-distribution**; next-step is saturated; **V1 is only marginally above a trigram in-distribution**; **OOD is the deciding, mostly-untested axis** (the LLM may generalize better).
 
 ## NEXT SECTION — model improvement (new session)
+**Plan:** `MODEL_IMPROVEMENT_PLAN.md` (matrix, goal, criteria, data strategy) + `CO_SCIENTIST_LAB_DESIGN.md`
+(the experimentally-grounded **co-scientist-lab** fork — tiered validation ladder, `run_experiment.py`,
+autonomous loop + Leonardo batch boundary, build checklist). Decisions locked 2026-05-30: fork the skill
+into `process-logic/.claude/skills/co-scientist-lab/`, run mostly-autonomously, smoke locally + full on
+Leonardo. Read both docs first.
+
 Make the small from-scratch model decisively better where a trigram/LLM can't:
 - **Generalize to OOD** (deciding metric; V1 OOD next-step ~0.50) and **infer the family from context** (don't memorize per-family patterns).
 - **Targets:** beat previous-best checkpoint (primary), stay above n-gram (floor), chase Gemini on OOD (frontier bar).
