@@ -28,31 +28,34 @@ Three scored tasks (+ a hidden OOD generalization task scored post-submission):
   steps). No BPE (it would shred the step=position structure).
 - **No explicit family conditioning** in V1 (avoids one-hotting the family, which would hurt OOD).
 - **Training:** next-token cross-entropy, AdamW (betas 0.9/0.95, wd 0.1 on 2-D params), cosine LR
-  6e-4→6e-5 with 200-step warmup, grad-clip 1.0, 20k iters, batch 64. **Best-on-validation
-  checkpointing** (no early stopping yet — see "What didn't").
+  6e-4→6e-5 with 100-step warmup, grad-clip 1.0, batch 64, up to 4000 iters with **early stopping**
+  (patience 8) and **best-on-validation checkpointing**. Validation uses a **fixed, family-balanced**
+  eval set (`build_eval_batches`) so the metric is stable and unbiased. W&B logging is flag-gated
+  (`--wandb`, offline on compute nodes); grad-norm is logged each eval.
 - **Anomaly = hybrid:** deterministic `validate_sequence` for the decision + exact rule attribution,
   with LM perplexity as the continuous score. (See honesty note in Results.)
 - **Data:** deterministic generator. 60K train (20K/family), 12K in-distribution val. All sequences
   validator-clean; no train/val/ood overlap.
 
 ## Results (local scorer, per family + overall)
-Checkpoint: best-on-val at **iter 17000, val_loss 0.3090**. Eval inputs: `data/eval_*.csv`.
+Checkpoint: best-on-val at **iter 4000, val_loss 0.3288** (V1.1 clean-eval run). Eval inputs:
+`data/eval_*.csv`.
 
 ### Task 1 — Next-step prediction
 | family | n | top1 | top3 | top5 | MRR |
 |---|---|---|---|---|---|
-| **ALL** | 3600 | **0.814** | 0.998 | 1.000 | 0.905 |
-| mosfet | 1200 | 0.821 | 0.998 | 1.000 | 0.909 |
-| igbt | 1200 | 0.825 | 0.998 | 1.000 | 0.911 |
-| ic | 1200 | 0.797 | 0.996 | 0.999 | 0.895 |
+| **ALL** | 3600 | **0.807** | 0.997 | 1.000 | 0.901 |
+| mosfet | 1200 | 0.812 | 0.996 | 1.000 | 0.904 |
+| igbt | 1200 | 0.821 | 0.998 | 1.000 | 0.909 |
+| ic | 1200 | 0.789 | 0.996 | 0.999 | 0.891 |
 
 ### Task 2 — Sequence completion
 | family | n | exact_match | norm_edit_dist ↓ | token_acc |
 |---|---|---|---|---|
-| **ALL** | 600 | **0.002** | 0.227 | **0.403** |
-| mosfet | 200 | 0.005 | 0.162 | 0.463 |
-| igbt | 200 | 0.000 | 0.228 | 0.461 |
-| ic | 200 | 0.000 | 0.291 | 0.284 |
+| **ALL** | 600 | **0.002** | 0.227 | **0.400** |
+| mosfet | 200 | 0.005 | 0.168 | 0.459 |
+| igbt | 200 | 0.000 | 0.233 | 0.463 |
+| ic | 200 | 0.000 | 0.279 | 0.277 |
 
 ### Task 3 — Anomaly detection (hybrid: LM + deterministic validator)
 | family | n | acc | precision | recall | F1 | ROC-AUC | rule_attr |
@@ -66,33 +69,40 @@ Loss/accuracy curves: `extras/results/curves.png`. Raw log: `extras/results/trai
 Submission CSVs: `extras/results/{nextstep,completion,anomaly}.csv`.
 
 ## What worked
-- **Clean, fast convergence.** Val loss reaches its plateau (~0.31) by **iter ~2000**; top-5 next-step
-  accuracy is **1.000** and MRR **0.905** — the model learned the recipe grammar's local structure well.
+- **Clean, fast, monotonic convergence.** With the fixed family-balanced eval set, val loss descends
+  smoothly **0.339 → 0.329** over 4000 iters (no oscillation); top-5 next-step accuracy is **1.000**
+  and MRR **0.901** — the model learned the recipe grammar's local structure well.
 - **Per-family consistency** on Tasks 1 & 3 (no family collapses), a good sign for transfer.
 - **Anomaly hybrid** delivers perfect detection with exact rule attribution at 0.91.
+- **Trustworthy instrumentation.** A full health test (`tests/test_health.py`, 25/25) verifies causal
+  attention (no future leakage), RoPE relative-position sensitivity, RMSNorm, weight-tying,
+  dataloader padding + ground-truth shift alignment, per-parameter gradient flow, and weight updates.
 - **Reproducible & portable.** Fixed seed (42); deterministic data; pixi env pinned. Resolved the
   Leonardo RHEL8 `GLIBCXX` issue for the PyPI torch wheel via `LD_LIBRARY_PATH=$CONDA_PREFIX/lib`
   (in `pixi.toml [activation.env]`). Verified CUDA on the A100 (`torch 2.10.0+cu128`).
 
 ## What didn't / honest caveats
 - **Top-1 (0.81) is below the naive 90–95% expectation — but this is grammar branching, not a bug.**
-  top-3 = 0.998 and top-5 = 1.000 mean the true step is almost always in the top 3; at many cut
+  top-3 = 0.997 and top-5 = 1.000 mean the true step is almost always in the top 3; at many cut
   points several next-steps are *equally valid* by the grammar, so a single-label top-1 is capped.
   (V2: quantify validator-valid next-steps per cut point to confirm.)
 - **Completion is the weak axis** (token-acc 0.40, exact-match ≈ 0). Two causes: greedy decoding
   compounds error over long suffixes, and the model likely emits *a* valid ordering that differs from
-  the *single* reference suffix. `ic` (our OOD-proxy family) is weakest (0.284). V2 diagnostic: check
+  the *single* reference suffix. `ic` (our OOD-proxy family) is weakest (0.277). V2 diagnostic: check
   whether generated completions are validator-valid even when they don't match the reference.
 - **Task 3's perfect scores come from the *deterministic validator*, not the LM.** This is by design,
   but we must report the **LM-only** (perplexity) anomaly numbers separately as the honest evidence the
   model itself learned the logic — *not yet run* (`predict.py --no-validator`).
-- **No early stopping.** We run a fixed 20k iters; the model converges by ~2k and *mildly overfits*
-  in the tail (val_loss drifts 0.31→0.35). Best-on-val checkpointing saves us, but ~90% of GPU time is
-  wasted — add `--patience` + smaller `max_iters` for the V2 scaling sweep.
+- **The earlier "overfitting tail" was a measurement artifact.** The first run's val_loss appeared to
+  oscillate 0.31↔0.37; that was a *family-blocked* validation sampler scoring a different biased slice
+  each eval, not real instability. With the fixed balanced eval set, train ≈ val and the curve is
+  monotonic — so early stopping (patience 8) is purely a **compute saver**, not overfitting protection.
+  The grammar saturates by ~iter 500; `max_iters` is now 4000 (down from 20000).
 
 ## Next steps (V2)
-1. **OOD experiment (deciding metric):** add `--exclude-family` to `train.py`; train on two families,
-   evaluate on the held-out third (`ood_holdout.csv`); report the ID→OOD drop.
+1. **OOD experiment (deciding metric) — IN PROGRESS:** `train.py --exclude-family ic` trains on
+   two families and evaluates on the held-out third; report the ID→OOD drop. (`--exclude-family` is
+   implemented; the held-out run is launching.)
 2. **LM-only anomaly pass** for honest model-evidence (perplexity ROC-AUC), reported alongside hybrid.
 3. **Completion fix:** constrained/structured decoding (mask grammar-invalid next-steps); investigate
    block-level accuracy vs. the reference.
