@@ -1,0 +1,27 @@
+[workspace]
+channels = ["conda-forge"]
+name = "SiliconGPT"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+# Leonardo (RHEL8) ships an old system libstdc++ (GLIBCXX up to 3.4.25), but the
+# PyPI torch wheel needs GLIBCXX_3.4.29+. The conda-forge libstdcxx in this env
+# provides it; put the env lib dir first on the loader path so torch resolves
+# against it instead of /lib64. Without this, `import torch` fails with a
+# "GLIBCXX_3.4.29 not found" error.
+[activation.env]
+LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
+
+[dependencies]
+python = "3.12.*"
+numpy = ">=2.4.6,<3"
+pyyaml = ">=6.0.3,<7"
+tqdm = ">=4.67.3,<5"
+scikit-learn = ">=1.8.0,<2"
+matplotlib = ">=3.10.9,<4"
+
+[pypi-dependencies]
+torch = ">=2.10.0, <3"
+wandb = ">=0.27.0, <0.28"
