@@ -68,6 +68,35 @@ Checkpoint: best-on-val at **iter 4000, val_loss 0.3288** (V1.1 clean-eval run).
 Loss/accuracy curves: `extras/results/curves.png`. Raw log: `extras/results/train_log.csv`.
 Submission CSVs: `extras/results/{nextstep,completion,anomaly}.csv`.
 
+### Task 4 — OOD generalization (the deciding metric)
+We train an identical model on **two families only** (mosfet + igbt; `--exclude-family ic`,
+40K train / 8K val, best-on-val 0.3087) and evaluate on the **held-out `ic` family** it has never
+seen. Vocab covers all three families, so `ic`-specific tokens have embeddings but were never trained
+— exactly the "unseen 4th family" setup. Same architecture, isolated checkpoint
+(`checkpoints/ood_ic/`); the mosfet/igbt rows act as a health control.
+
+**Next-step on `ic` — ID model (saw ic) vs. OOD model (never saw ic):**
+| metric | ID | OOD | drop |
+|---|---|---|---|
+| top1 | 0.789 | **0.451** | −0.338 |
+| top3 | 0.996 | 0.608 | −0.388 |
+| top5 | 0.999 | 0.623 | −0.376 |
+| MRR  | 0.891 | 0.530 | −0.361 |
+
+**Completion on `ic`:** token-acc 0.277 → **0.169** (−0.108); norm-edit-dist 0.279 → 0.488 (worse).
+
+**Health control — the OOD model on the families it *did* train on:** mosfet top1 **0.823**, igbt
+top1 **0.819** — equal to (slightly above) the full model. So the `ic` collapse is a genuine
+*generalization* gap, not an undertrained/broken model. Anomaly stays F1 = 1.0 (deterministic
+validator, family-independent).
+
+**Read:** there is real but partial transfer — a model that never saw an `ic` recipe still reaches
+top1 0.451 / top5 0.623 on `ic` (vs. ~0.005 random), so it learned family-agnostic process logic
+(clean→deposit→litho→etch ordering). But the large top1 drop (0.79→0.45) shows it leans on
+family-specific token co-occurrences unavailable for an unseen family. **This is the baseline the V2
+OOD levers must beat.** Likely the biggest single cause is that unseen `ic` tokens keep their random
+init embeddings → description-init embeddings (lever 6) targets this directly.
+
 ## What worked
 - **Clean, fast, monotonic convergence.** With the fixed family-balanced eval set, val loss descends
   smoothly **0.339 → 0.329** over 4000 iters (no oscillation); top-5 next-step accuracy is **1.000**
@@ -100,9 +129,10 @@ Submission CSVs: `extras/results/{nextstep,completion,anomaly}.csv`.
   The grammar saturates by ~iter 500; `max_iters` is now 4000 (down from 20000).
 
 ## Next steps (V2)
-1. **OOD experiment (deciding metric) — IN PROGRESS:** `train.py --exclude-family ic` trains on
-   two families and evaluates on the held-out third; report the ID→OOD drop. (`--exclude-family` is
-   implemented; the held-out run is launching.)
+1. **OOD experiment (deciding metric) — DONE (see Task 4 above).** Held-out `ic`: next-step top1
+   0.789→0.451. Now *improve* it: the V2 OOD levers (esp. description-init embeddings) must close this
+   gap. Repeat the held-out protocol for mosfet/igbt too (`--export=ALL,EXCLUDE=igbt`) for a 3-fold
+   average.
 2. **LM-only anomaly pass** for honest model-evidence (perplexity ROC-AUC), reported alongside hybrid.
 3. **Completion fix:** constrained/structured decoding (mask grammar-invalid next-steps); investigate
    block-level accuracy vs. the reference.
