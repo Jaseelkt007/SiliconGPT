@@ -10,4 +10,5 @@ extras/results/*.csv
 __pycache__/
 *.pyc
 .venv/
+.env
 .ipynb_checkpoints/

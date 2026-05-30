@@ -34,6 +34,13 @@ from process_logic.vocab import Vocab, SPECIALS          # noqa: E402
 from process_logic import generation as G                 # noqa: E402
 from process_logic.dataset import load_compact_csv        # noqa: E402
 
+# load API keys from process-logic/.env if present (NEVER commit .env)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env")
+except ImportError:
+    pass
+
 RULE_IDS = [
     "RULE_DEP_NO_CLEAN", "RULE_METAL_ETCH_NO_LITHO", "RULE_ETCH_NO_MASK",
     "RULE_LITHO_LEVEL_SKIP", "RULE_IMPLANT_NO_MASK", "RULE_CMP_NO_DEP",

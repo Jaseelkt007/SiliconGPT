@@ -1,0 +1,6 @@
+# LLM-baseline harness deps (run on a machine with internet + API keys).
+# Install into an isolated env:  uv venv .venv && uv pip install -p .venv -r baselines/requirements.txt
+openai>=1.40        # also used for Gemini + Kimi via base_url (OpenAI-compatible endpoints)
+anthropic>=0.40     # Claude
+python-dotenv>=1.0  # loads .env
+numpy>=1.26
