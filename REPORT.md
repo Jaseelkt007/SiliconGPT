@@ -94,32 +94,52 @@ validator, family-independent).
 top1 0.451 / top5 0.623 on `ic` (vs. ~0.005 random), so it learned family-agnostic process logic
 (clean→deposit→litho→etch ordering). But the large top1 drop (0.79→0.45) shows it leans on
 family-specific token co-occurrences unavailable for an unseen family. **This is the baseline the V2
-OOD levers must beat.** Likely the biggest single cause is that unseen `ic` tokens keep their random
-init embeddings → description-init embeddings (lever 6) targets this directly.
+OOD levers must beat.** We hypothesised the biggest cause was unseen tokens keeping random embeddings,
+and tested description-init to fix it — but it did not help top-1 (see the 3-fold result below), which
+relocates the bottleneck from *embedding placement* to *missing transition/ordering structure*.
 
 **Gap decomposition (measured on the 1,200 `ic` next-step examples):** 29 of `ic`'s 130 tokens are
 never trained when `ic` is held out. **22.3%** of `ic` next-step targets are such unseen tokens (the
 OOD model's output row stays random → it *cannot* emit them), and **100%** of prefixes contain ≥1
 unseen token (context corruption). Implied OOD top-1 *on shared/trained targets* ≈ 0.451 / 0.777 ≈
-**0.58** (vs. ID ~0.79). So the −0.34 drop is ~half **mechanical** (unseen-token init — exactly what
-description-init attacks) and ~half **structural** (`ic`'s novel ordering — the true generalization
-residual that description-init will not fix).
+**0.58** (vs. ID ~0.79). We *hypothesised* the unseen-token portion was a "mechanical" component that
+embedding warm-start would recover — but the description-init experiment below **refutes** this: giving
+those tokens sensible vectors raised top-5 recall yet did not improve top-1. So even the unseen-token
+gap is really about *missing transition structure*, not embedding placement — the whole −0.34 drop
+behaves as a structural generalization residual.
 
 **Description-init result — 3-fold OOD, next-step on the held-out family.** Baseline = random init;
-`+desc-init` = embedding warm-started from each step's text (`scripts/build_emb_init.py`). Fill after:
-`bash scripts/run_ood_3fold.sh` (baseline) and `EMB_INIT=emb_init.npz bash scripts/run_ood_3fold.sh`,
-then `pixi run python scripts/ood_summary.py`.
+`+desc-init` = embedding warm-started from each step's **name** via a frozen MiniLM encoder
+(`scripts/build_emb_init.py`; no description CSVs were available on the server, so name-only). Each
+fold trains without one family and is scored on the held-out family. Reproduce: `bash
+scripts/run_ood_3fold.sh` then `EMB_INIT=emb_init.npz bash scripts/run_ood_3fold.sh`, then
+`pixi run python scripts/ood_summary.py`.
 
 | held-out family | baseline top-1 | +desc-init top-1 | Δ | baseline top-5 | +desc-init top-5 |
 |---|---|---|---|---|---|
-| ic              | 0.451 | _TBD_ | _TBD_ | 0.623 | _TBD_ |
-| igbt            | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| mosfet          | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| **3-fold avg**  | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| ic              | 0.451 | 0.439 | −0.012 | 0.623 | 0.647 |
+| igbt            | 0.484 | 0.470 | −0.014 | 0.674 | 0.679 |
+| mosfet          | 0.549 | 0.521 | −0.028 | 0.727 | 0.748 |
+| **3-fold avg**  | **0.495** | **0.477** | **−0.018** | **0.674** | **0.692** |
 
-*Hypothesis to confirm:* description-init recovers roughly **half-to-two-thirds** of the gap (the
-mechanical unseen-token component), not all of it. The 3-fold average is the honest headline OOD number
-(`ic` alone is the most structurally distinct family, so likely the worst single fold).
+**Result (honest negative): name-based description-init did NOT close the OOD gap.** It slightly
+*lowered* top-1 (−0.018 avg) while modestly *raising* top-5 (+0.018) and top-3. The
+"recovers half-to-two-thirds of the gap" hypothesis is **rejected**. The top-1/top-5 split is the
+tell: warm-starting unseen-family tokens from their names makes them *reachable* (they enter the top-5
+candidate set → recall up) but does not fix the rank-1 decision. Why:
+- **Embedding placement ≠ transition knowledge.** The model still never observed the *transitions*
+  into/out of an unseen token; a good vector makes it a candidate, not the argmax.
+- **Name-semantic similarity ≠ process-logic adjacency.** A generic text encoder over step *names*
+  clusters by wording, which only partially matches which steps are grammar-interchangeable. (Descriptions,
+  which we didn't have, might help — untested.)
+- It re-initialises the *whole* embedding matrix from text space, mildly perturbing trained tokens too.
+
+Methodology note: mosfet is the easiest held-out fold (0.549), ic the hardest (0.451), confirming ic is
+the most structurally distinct family. The baseline `ic` fold reproduced the earlier number (0.451)
+exactly — a clean cross-check. **Takeaway for V2:** the OOD residual is mostly *structural* (novel step
+*ordering*), which embedding init cannot supply; the more promising levers are those that inject
+transition/ordering structure — cross-family recombination augmentation, or RL with the validator as
+reward — not better token embeddings.
 
 ## What worked
 - **Clean, fast, monotonic convergence.** With the fixed family-balanced eval set, val loss descends
@@ -153,17 +173,19 @@ mechanical unseen-token component), not all of it. The 3-fold average is the hon
   The grammar saturates by ~iter 500; `max_iters` is now 4000 (down from 20000).
 
 ## Next steps (V2)
-1. **OOD experiment (deciding metric) — DONE (see Task 4 above).** Held-out `ic`: next-step top1
-   0.789→0.451. Now *improve* it: the V2 OOD levers (esp. description-init embeddings) must close this
-   gap. Repeat the held-out protocol for mosfet/igbt too (`--export=ALL,EXCLUDE=igbt`) for a 3-fold
-   average.
-2. **LM-only anomaly pass** for honest model-evidence (perplexity ROC-AUC), reported alongside hybrid.
-3. **Completion fix:** constrained/structured decoding (mask grammar-invalid next-steps); investigate
+1. **OOD experiment (deciding metric) — DONE (see Task 4).** 3-fold baseline avg top-1 **0.495**.
+   Description-init **tested and rejected** for top-1 (−0.018; +0.018 on top-5). The gap is structural.
+2. **Inject ordering structure (the promising OOD levers, given the desc-init result):**
+   **cross-family recombination augmentation** (splice validator-valid sub-sequences across families to
+   teach family-agnostic ordering) and **RL with the validator as reward** (rejection-sampling FT →
+   GRPO) — both add transition knowledge that embedding init cannot.
+3. **Description-init follow-ups (lower priority):** retry with the kit's step *descriptions* (not just
+   names) if obtainable; or warm-start ONLY unseen-family tokens (leave trained tokens untouched) to
+   avoid perturbing them — isolates whether the small top-1 drop is the whole-matrix re-init.
+4. **LM-only anomaly pass** for honest model-evidence (perplexity ROC-AUC), reported alongside hybrid.
+5. **Completion fix:** constrained/structured decoding (mask grammar-invalid next-steps); investigate
    block-level accuracy vs. the reference.
-4. **Early stopping + scaling study:** `--patience`; sweep model {1M,5M,15M,50M} × data {1K…100K/family}.
-5. **RL with the validator as reward:** rejection-sampling FT → GRPO (baseline→trained→optimized story).
-6. **OOD levers:** description-init embeddings for unseen tokens; cross-family recombination augmentation;
-   safe family conditioning (separate embedding + family-dropout + UNKNOWN_FAMILY).
+6. **Scaling study:** sweep model {1M,5M,15M,50M} × data {1K…100K/family} (early stopping already in).
 
 ## Reproduce
 ```bash
