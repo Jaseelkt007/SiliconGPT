@@ -110,10 +110,17 @@ def main():
     section("Positional encoding (RoPE)")
     check("rope cache shape [block, head_dim]",
           tuple(model.rope_cos.shape) == (cfg.block_size, cfg.n_embd // cfg.n_head))
-    same = torch.full((1, 8), 4, dtype=torch.long)          # same token at every position
-    ls, _ = model(same)
-    check("identical tokens -> position-dependent logits (RoPE active)",
-          not torch.allclose(ls[0, 0], ls[0, 5], atol=1e-5))
+    # RoPE is applied to q,k only (values carry no position), so identical tokens at every
+    # position give identical outputs WITH OR WITHOUT RoPE — that is not a valid probe.
+    # Valid probes: (a) the cache varies with position, and (b) reordering the context while
+    # keeping the SAME final query token changes the final logits (relative-position sensitivity;
+    # plain causal attention without positional encoding is order-invariant over the context).
+    check("rope cache varies with position",
+          not torch.allclose(model.rope_cos[0], model.rope_cos[5], atol=1e-6))
+    c1 = torch.tensor([[6, 7, 8, 5]]); c2 = torch.tensor([[8, 7, 6, 5]])  # same final token (5), context reordered
+    o1, _ = model(c1); o2, _ = model(c2)
+    check("reordering context changes final logits (RoPE relative-position active)",
+          not torch.allclose(o1[0, -1], o2[0, -1], atol=1e-5))
 
     # -------------------------------------------------------------- RMSNorm
     section("RMSNorm")
