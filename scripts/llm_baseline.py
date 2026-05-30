@@ -55,9 +55,10 @@ PROVIDERS = {
                   "no_think": {"kwargs": {"reasoning_effort": "none"}}},
     "gemini":    {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
                   "key": "GEMINI_API_KEY", "model": "gemini-3.5-flash", "kind": "openai",
-                  # gemini-3.5-flash cannot FULLY disable thinking; "minimal" is the floor.
+                  # gemini-3.5-flash can't FULLY disable thinking; reasoning_effort lowers it.
+                  # (google.thinking_config nesting is rejected by the OpenAI-compat endpoint.)
                   # Use gemini-2.5-flash + thinking_budget=0 if you need true zero.
-                  "no_think": {"extra_body": {"google": {"thinking_config": {"thinking_level": "minimal"}}}}},
+                  "no_think": {"kwargs": {"reasoning_effort": "low"}}},
     "kimi":      {"base_url": "https://api.moonshot.ai/v1", "key": "MOONSHOT_API_KEY",
                   "model": "kimi-k2.6", "kind": "openai",
                   # Kimi K2.6 thinks BY DEFAULT — must disable explicitly.
@@ -140,11 +141,18 @@ def build_fewshot(task):
             "\nIS_VALID: 0\nCONFIDENCE: 0.04\nRULE: RULE_SHIP_BEFORE_TEST\n")
 
 
+def _ascii(text):
+    # some SDKs/transports choke on unicode (e.g. Anthropic on the prompt's "→" arrows)
+    return (text.replace("→", "->").replace("—", "-").replace("≈", "~").replace("↓", "")
+            .encode("ascii", "ignore").decode("ascii"))
+
+
 def build_system(task, steps):
     base = (ROOT / "baselines" / "system_prompt.txt").read_text(encoding="utf-8")
-    return (base + "\n\n# VALID STEP VOCABULARY (use ONLY these exact names)\n"
+    full = (base + "\n\n# VALID STEP VOCABULARY (use ONLY these exact names)\n"
             + ", ".join(steps) + "\n" + ANOMALY_SPEC
             + "\n# WORKED EXAMPLE\n" + build_fewshot(task))
+    return _ascii(full)
 
 
 def build_user(task, row):
@@ -171,24 +179,29 @@ def query(provider, model, system, user, temperature, task, thinking=False):
     if p["kind"] == "mock":
         return _mock(task)
     nt = {} if thinking else p.get("no_think", {})        # disable reasoning unless --thinking
+    key = os.environ.get(p["key"], "")
+    if not key:
+        raise RuntimeError(f"Missing API key {p['key']} — set it in .env")
     if p["kind"] == "openai":
         from openai import OpenAI
-        client = OpenAI(base_url=p["base_url"], api_key=os.environ[p["key"]])
+        client = OpenAI(base_url=p["base_url"], api_key=key)
         kwargs = dict(nt.get("kwargs", {}))               # e.g. reasoning_effort=none (OpenAI)
         eb = nt.get("extra_body")                          # e.g. gemini thinking_level / kimi thinking
         msgs = [{"role": "system", "content": system}, {"role": "user", "content": user}]
         try:
             r = client.chat.completions.create(model=model, temperature=temperature,
                                                messages=msgs, extra_body=eb, **kwargs)
-        except Exception as e:                             # some reasoning models reject non-default temp
-            if "temperature" in str(e).lower():
-                r = client.chat.completions.create(model=model, messages=msgs, extra_body=eb, **kwargs)
+        except Exception as e:  # if temp / thinking-control param is rejected, retry plain
+            m = str(e).lower()
+            if any(k in m for k in ("temperature", "reasoning", "thinking", "unknown",
+                                    "unexpected", "invalid", "extra_body", "field", "unsupported")):
+                r = client.chat.completions.create(model=model, messages=msgs)
             else:
                 raise
         return r.choices[0].message.content
     if p["kind"] == "anthropic":
         import anthropic
-        client = anthropic.Anthropic(api_key=os.environ[p["key"]])
+        client = anthropic.Anthropic(api_key=key)
         extra = dict(nt.get("kwargs", {}))                 # opus-4-8: add effort="low" here if used
         r = client.messages.create(model=model, max_tokens=2048, temperature=temperature,
                                    system=system, messages=[{"role": "user", "content": user}], **extra)
@@ -236,23 +249,33 @@ def parse_anomaly(text):
 # --------------------------------------------------------------------------- #
 # run
 # --------------------------------------------------------------------------- #
-def run_task(task, provider, model, limit, out_dir, temperature, thinking=False):
+def run_task(task, provider, model, limit, out_dir, temperature, thinking=False, debug=False):
     steps = load_steps()
     steps_upper = {s.upper(): s for s in steps}
     system = build_system(task, steps)
     in_file = {"nextstep": "eval_nextstep.csv", "completion": "eval_completion.csv",
                "anomaly": "eval_anomaly.csv"}[task]
+    full_size = {"nextstep": 3600, "completion": 600, "anomaly": 987}[task]
     rows = list(csv.DictReader(open(ROOT / "data" / in_file, encoding="utf-8")))[:limit]
     out_dir.mkdir(parents=True, exist_ok=True)
+    print(f"\n>>> {task} | {provider}/{model} | thinking={'on' if thinking else 'off'} | "
+          f"{len(rows)} examples -> {out_dir}")
 
-    latencies, results, completions = [], [], []
-    for row in rows:
+    latencies, results, completions, errors = [], [], [], 0
+    t_start = time.time()
+    for i, row in enumerate(rows, 1):
         t0 = time.time()
-        text = query(provider, model, system, build_user(task, row), temperature, task, thinking)
+        try:
+            text = query(provider, model, system, build_user(task, row), temperature, task, thinking)
+        except Exception as e:
+            errors += 1
+            text = ""
+            print(f"   [ERR] {row['EXAMPLE_ID']}: {str(e)[:180]}")
         latencies.append(time.time() - t0)
+        if debug and i == 1:
+            print(f"   [raw response #1]\n{text[:300]}\n   [/raw]")
         if task == "nextstep":
-            ranks = parse_nextstep(text, steps, steps_upper)
-            results.append([row["EXAMPLE_ID"], *ranks])
+            results.append([row["EXAMPLE_ID"], *parse_nextstep(text, steps, steps_upper)])
         elif task == "completion":
             comp = parse_completion(text, steps, steps_upper)
             results.append([row["EXAMPLE_ID"], "|".join(comp)])
@@ -260,6 +283,8 @@ def run_task(task, provider, model, limit, out_dir, temperature, thinking=False)
         else:
             iv, sc, rule = parse_anomaly(text)
             results.append([row["EXAMPLE_ID"], iv, f"{sc:.4f}", rule])
+        if i <= 5 or i % 25 == 0:
+            print(f"   {i}/{len(rows)} ({latencies[-1]:.1f}s last | {errors} errs)")
 
     headers = {"nextstep": ["EXAMPLE_ID", "RANK_1", "RANK_2", "RANK_3", "RANK_4", "RANK_5"],
                "completion": ["EXAMPLE_ID", "PREDICTED_SEQUENCE"],
@@ -268,11 +293,14 @@ def run_task(task, provider, model, limit, out_dir, temperature, thinking=False)
     with open(out_dir / outname, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f); w.writerow(headers); w.writerows(results)
 
-    avg_ms = 1000 * sum(latencies) / max(1, len(latencies))
-    print(f"[{task}] {provider}/{model}: {len(results)} examples, {avg_ms:.0f} ms/call avg -> {out_dir/outname}")
+    avg = sum(latencies) / max(1, len(latencies))
+    print(f"   [done] {len(results)} ex | {errors} errors | {avg:.1f}s/call | "
+          f"{time.time()-t_start:.0f}s total -> {outname}")
+    print(f"   [estimate] full {task} ({full_size} ex) ~ {avg*full_size/60:.0f} min at this rate")
     if completions:
         vf = sum(1 for c in completions if not G.validate_sequence(c)) / len(completions)
-        print(f"   completion validity (validate_sequence): {vf:.3f}")
+        print(f"   completion validity: {vf:.3f}")
+    return errors
 
 
 def main():
@@ -285,13 +313,14 @@ def main():
     ap.add_argument("--out-dir", default=None)
     ap.add_argument("--thinking", action="store_true",
                     help="enable reasoning/thinking mode (default OFF for cost/speed)")
+    ap.add_argument("--debug", action="store_true", help="print the first raw response per task")
     args = ap.parse_args()
 
     model = args.model or PROVIDERS[args.provider]["model"]
     out_dir = Path(args.out_dir) if args.out_dir else ROOT / "extras" / "results" / f"baseline_{args.provider}"
     tasks = ["nextstep", "completion", "anomaly"] if args.task == "all" else [args.task]
     for t in tasks:
-        run_task(t, args.provider, model, args.limit, out_dir, args.temperature, args.thinking)
+        run_task(t, args.provider, model, args.limit, out_dir, args.temperature, args.thinking, args.debug)
 
 
 if __name__ == "__main__":

@@ -66,3 +66,20 @@ Verified: no train/val/ood overlap; all train sequences pass `validate_sequence`
 - CPU smoke on the server: a login node (10-min CPU limit) or `srun --partition=lrd_all_serial --time 04:00:00 --gres=tmpfs:100G --mem=16G --pty bash`, then `pixi run python src/process_logic/train.py --smoke --device cpu`.
 - Compute-node internet (wandb only): export HTTP(S)_PROXY=http://proxyuser:5dd1d2bd00@10.99.0.1:38425 (low-bandwidth; restarts ~10 min). Default: wandb off, we log to `extras/results/train_log.csv`.
 - Onboarding kit: https://ai-at.eu/hpc-onboarding/ (Ch.5 first steps, Ch.6 software).
+
+## V2 status & benchmark (as of 2026-05-30)
+V1 complete + validated. V2 exploration (see `DECISIONS.md`, `V2_RL_PLAN.md`, `extras/results/benchmark.md`):
+- **Validity is a first-class metric** (`validity.py`, `scripts/measure_validity.py`): greedy/sampled completion ~100% valid; free-gen 0.997.
+- **LM-only anomaly ROC-AUC 0.997** → the model genuinely learned process logic (not just the validator-hybrid).
+- **Description-init for OOD → REJECTED** (honest negative; 3-fold top-1 0.495→0.477). OOD gap is *structural*, not embedding placement.
+- **RL (RFT/GRPO) → DEFERRED** — Phase A showed ~no validity headroom (already ~100% valid).
+- **Baselines (committee provided NONE — only the generator/validator):** n-gram floor (`scripts/baselines.py`) + LLM frontier (`scripts/llm_baseline.py`: Gemini/GPT/Kimi via `.env`, thinking-off; Kimi deferred — rate-limited). Collate with `scripts/benchmark_table.py`.
+- **Benchmark result:** ours ≳ n-gram ≫ Gemini **in-distribution**; next-step is saturated; **V1 is only marginally above a trigram in-distribution**; **OOD is the deciding, mostly-untested axis** (the LLM may generalize better).
+
+## NEXT SECTION — model improvement (new session)
+Make the small from-scratch model decisively better where a trigram/LLM can't:
+- **Generalize to OOD** (deciding metric; V1 OOD next-step ~0.50) and **infer the family from context** (don't memorize per-family patterns).
+- **Targets:** beat previous-best checkpoint (primary), stay above n-gram (floor), chase Gemini on OOD (frontier bar).
+- **Levers** (V2_RL_PLAN §11 / DECISIONS): cross-family recombination augmentation, family conditioning + dropout, positional-encoding ablations, scaling study; cheap wins = constrained decoding (B0) + per-family anomaly threshold (C1).
+- **Benchmark every iteration** with `scripts/benchmark_table.py` (+ the OOD run).
+- The LLM baseline env is built locally: `.venv` + keys in `.env` (gitignored). `.venv/bin/python scripts/llm_baseline.py --provider gemini ...`.
