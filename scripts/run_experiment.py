@@ -64,7 +64,7 @@ def apply_overrides(train_cfg, model_cfg, overrides):
     Data/augmentation knobs live in the TRAIN config (train.py reads them)."""
     MODEL_BARE = {"pos_encoding", "family_conditioning", "family_dropout", "tie_weights",
                   "n_layer", "n_head", "n_embd", "block_size", "dropout", "mlp_ratio",
-                  "rope_base", "objective", "aux_family_head"}
+                  "rope_base", "objective", "aux_family_head", "weight_share"}
     for k, v in (overrides or {}).items():
         if k.startswith("model."):
             model_cfg[k[len("model."):]] = v

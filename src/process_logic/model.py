@@ -28,6 +28,8 @@ class ModelConfig:
     mlp_ratio: float = 8.0 / 3.0
     rope_base: float = 10000.0
     tie_weights: bool = True
+    weight_share: bool = False   # Universal-Transformer: reuse ONE block across all n_layer depths
+                                 # (forces a single shared transition operator; OOD/systematicity lever)
     pos_encoding: str = "rope"   # "rope" | "nope" (no positional encoding; relies on the causal
                                  # mask for implicit order — a length/compositional-OOD lever)
 
@@ -126,7 +128,13 @@ class ProcessLM(nn.Module):
         self.cfg = cfg
         self.tok = nn.Embedding(cfg.vocab_size, cfg.n_embd)
         self.drop = nn.Dropout(cfg.dropout)
-        self.blocks = nn.ModuleList([Block(cfg) for _ in range(cfg.n_layer)])
+        self.weight_share = getattr(cfg, "weight_share", False)
+        if self.weight_share:
+            # one block reused n_layer times (Universal-Transformer-style depth sharing)
+            self._shared = Block(cfg)
+            self.blocks = nn.ModuleList([self._shared] * cfg.n_layer)  # same module object each depth
+        else:
+            self.blocks = nn.ModuleList([Block(cfg) for _ in range(cfg.n_layer)])
         self.norm = RMSNorm(cfg.n_embd)
         self.head = nn.Linear(cfg.n_embd, cfg.vocab_size, bias=False)
         if cfg.tie_weights:
