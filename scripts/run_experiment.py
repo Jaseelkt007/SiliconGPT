@@ -214,18 +214,15 @@ def ood_detect_auroc(ckpt, held_family, data_dir, device, n=300):
     """AUROC for flagging the unseen family as OOD via mean per-token NLL.
     Positive class = held-out family (should have HIGHER nll under a model that never saw it)."""
     from process_logic.predict import load_model
-    from process_logic.anomaly import seq_nll
+    from process_logic.anomaly import perplexity_scores
     model, vocab = load_model(ckpt, device)
     val = S.read_rows(Path(data_dir) / "val_id.csv")
     pos = [r["SEQUENCE"].split("|") for r in val if r["FAMILY"] == held_family][:n]
     neg = [r["SEQUENCE"].split("|") for r in val if r["FAMILY"] != held_family][:n]
     if not pos or not neg:
         return None
-    scores, labels = [], []
-    for s in pos:
-        scores.append(seq_nll(model, vocab, s, device)); labels.append(1)
-    for s in neg:
-        scores.append(seq_nll(model, vocab, s, device)); labels.append(0)
+    scores = perplexity_scores(model, vocab, pos, device) + perplexity_scores(model, vocab, neg, device)
+    labels = [1] * len(pos) + [0] * len(neg)
     return round(S.roc_auc(scores, labels), 4)
 
 
