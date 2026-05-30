@@ -1,0 +1,20 @@
+{
+  "id": "h7",
+  "tier": "smoke",
+  "status": "done",
+  "title": "validator-guided constrained decoding (diagnostic) \u2014 REJECTED",
+  "metrics": {
+    "diagnostic": {
+      "ood_recoverable_frac": 0.03,
+      "indist_recoverable_frac": 0.0,
+      "per_fold_recoverable": {
+        "ic": 0.031,
+        "igbt": 0.036,
+        "mosfet": 0.018
+      },
+      "ood_valid_but_wrong_frac": 0.97
+    }
+  },
+  "verdict": "neutral",
+  "note": "MEASURED (scripts/diag_constrained.py, n=200/fold): only ~3pct of OOD top-1 errors are grammar-INVALID; ~97pct are grammar-VALID-but-wrong. Constrained masking cannot fix valid-but-wrong picks -> NO OOD benefit. REJECTED. (Corrects an earlier erroneous 52pct figure that was never actually computed.)"
+}

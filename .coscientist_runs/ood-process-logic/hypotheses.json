@@ -59,7 +59,7 @@
     "summary": "Universal-Transformer weight sharing across depth: one block applied N times to impose an iterative family-agnostic transition operator",
     "category": "architecture/weight-sharing",
     "text": "Share a single decoder block across depth (Dehghani et al. ICLR 2019; Csordas et al. 2021). Independent layers can memorize per-family instantiations (OOD-fragile shortcut); a shared update rule must learn the generic transition operator applying to any family incl. the unseen one. Control at MATCHED param count (widen the shared block). Prediction: 3-fold OOD top1 > 0.52, in-dist within -0.015. NEEDS CODE: model.weight_sharing(bool) + optional n_unique_layers; reuse one Block in the depth loop (small diff).",
-    "elo": 1216.0,
+    "elo": 1231.9,
     "status": "reviewed",
     "parents": [],
     "origin": "generation:round1",
@@ -81,7 +81,7 @@
     "summary": "Family-dropout conditioning with an UNKNOWN_FAMILY row: additive family embedding dropped ~15-30% to UNKNOWN so the family-agnostic pathway is the OOD default",
     "category": "family-conditioning",
     "text": "Add a 4-row family embedding (mosfet/igbt/ic/UNKNOWN) to token inputs; during training replace the true row with UNKNOWN with prob p_drop. Held-out family is presented as UNKNOWN at test. UNKNOWN, seen across all families, encodes the family-agnostic grammar (cf. classifier-free-guidance conditioning dropout; DANN). Naive always-on conditioning HURTS OOD (routes each decision through a family-specific subcircuit with no pathway for an unseen family); dropout forces a genuine P(next|prefix,UNKNOWN). Dose-response: p_drop=0 should hurt vs baseline, p_drop~0.2-0.5 help, p_drop=1 -> current model. Prediction: OOD top1 0.52-0.55, in-dist >=0.80. NEEDS CODE: model.family_conditioning(bool)+model.family_dropout(float); family id already in data (~30-40 lines).",
-    "elo": 1217.3,
+    "elo": 1233.9,
     "status": "reviewed",
     "parents": [],
     "origin": "generation:round1",
@@ -114,11 +114,15 @@
     "summary": "Validator-guided constrained decoding: mask grammar-invalid next-steps at inference, accuracy-safe, converting OOD top-5 reachability into top-1/completion",
     "category": "inference/constrained-decoding",
     "text": "At each decode step mask logits of candidates that would violate the 10 grammar rules given the prefix. The true next step is always valid, so masking only removes wrong options -> accuracy-safe (top-1 can only hold/improve). In-dist the model already suppresses invalid steps (near-saturated, small gain); OOD it leaks probability onto invalid steps (large gain) -> the ID-vs-OOD gain gap is the evidence. Diagnostic FIRST: fraction of OOD top-1 errors whose argmax is grammar-INVALID (recoverable) vs valid-but-wrong; predict >=30-50% OOD vs <10% in-dist. Prediction: constrained OOD top1 0.55-0.62, in-dist <+0.01; OOD completion token-acc up from 0.17. NEEDS CODE: decode-time masking in generate.py wrapping the validator's per-rule predicate; locally-checkable rules first (~60-100 lines), decode.constrained=true.",
-    "elo": 1231.3,
+    "elo": 1198.8,
     "status": "reviewed",
     "parents": [],
     "origin": "generation:round1",
-    "scores": {}
+    "scores": {},
+    "empirical_status": "smoke",
+    "verdict": "neutral",
+    "vs_baseline": {},
+    "experiment": "experiments/h7.json"
   },
   {
     "id": "h8",
@@ -149,5 +153,77 @@
     "parents": [],
     "origin": "generation:round1",
     "scores": {}
+  },
+  {
+    "id": "augnope",
+    "summary": "NoPE+cross_family_recomb at 25M: OOD top1 0.498 (=NoPE alone; aug adds nothing)",
+    "text": "",
+    "elo": 1200,
+    "status": "new",
+    "parents": [],
+    "origin": "",
+    "scores": {},
+    "empirical_status": "full",
+    "verdict": "neutral",
+    "vs_baseline": {
+      "ngram_top1_delta": 0.0434,
+      "prevbest_id_top1_delta": -0.003,
+      "prevbest_ood_top1_delta": -0.0086
+    },
+    "experiment": "experiments/augnope.json"
+  },
+  {
+    "id": "h8_tiny",
+    "summary": "scaling tiny point (3-fold OOD)",
+    "text": "",
+    "elo": 1200,
+    "status": "new",
+    "parents": [],
+    "origin": "",
+    "scores": {},
+    "empirical_status": "full",
+    "verdict": "regresses-id",
+    "vs_baseline": {
+      "ngram_top1_delta": 0.0406,
+      "prevbest_id_top1_delta": -0.0058,
+      "prevbest_ood_top1_delta": 0.0192
+    },
+    "experiment": "experiments/h8_tiny.json"
+  },
+  {
+    "id": "h8_xsmall",
+    "summary": "scaling xsmall point (3-fold OOD)",
+    "text": "",
+    "elo": 1200,
+    "status": "new",
+    "parents": [],
+    "origin": "",
+    "scores": {},
+    "empirical_status": "full",
+    "verdict": "improves-ood",
+    "vs_baseline": {
+      "ngram_top1_delta": 0.0503,
+      "prevbest_id_top1_delta": 0.0039,
+      "prevbest_ood_top1_delta": 0.0173
+    },
+    "experiment": "experiments/h8_xsmall.json"
+  },
+  {
+    "id": "h8_mid",
+    "summary": "scaling mid point (3-fold OOD)",
+    "text": "",
+    "elo": 1200,
+    "status": "new",
+    "parents": [],
+    "origin": "",
+    "scores": {},
+    "empirical_status": "full",
+    "verdict": "neutral",
+    "vs_baseline": {
+      "ngram_top1_delta": 0.0481,
+      "prevbest_id_top1_delta": 0.0017,
+      "prevbest_ood_top1_delta": 0.0061
+    },
+    "experiment": "experiments/h8_mid.json"
   }
 ]
