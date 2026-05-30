@@ -1,0 +1,12 @@
+# Core
+torch>=2.2
+numpy>=1.26
+pyyaml>=6.0
+tqdm>=4.66
+
+# Metrics & plots
+scikit-learn>=1.4
+matplotlib>=3.8
+
+# Experiment tracking (optional)
+wandb>=0.16

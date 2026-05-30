@@ -1,0 +1,13 @@
+# data is generated, not committed (regenerate with scripts/build_datasets.py)
+data/
+# training artifacts
+*.pt
+*.ckpt
+checkpoints/
+wandb/
+extras/results/*.csv
+# python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/

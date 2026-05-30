@@ -1,0 +1,10 @@
+# V1 model: ~25M-param modern decoder. Change n_layer/n_embd for the scaling study.
+vocab_size: 202        # overridden at runtime from vocab.json
+n_layer: 8
+n_head: 8
+n_embd: 512
+block_size: 256        # covers longest sequence (~155 steps) + BOS/EOS
+dropout: 0.1
+mlp_ratio: 2.6667      # SwiGLU hidden ~= 8/3 * n_embd
+rope_base: 10000.0
+tie_weights: true
