@@ -67,7 +67,7 @@ def _round_robin_by_family(examples, seed):
     return merged
 
 
-def cross_family_recomb(examples, n_aug, seed=42, max_attempts_factor=40):
+def cross_family_recomb(examples, n_aug, seed=42, max_attempts_factor=6, attempt_ceiling=120000):
     """Cross-family recombination augmentation (GECA-style; an OOD lever).
 
     Splice the prefix of a sequence from family A with the suffix of one from a DIFFERENT
@@ -90,7 +90,10 @@ def cross_family_recomb(examples, n_aug, seed=42, max_attempts_factor=40):
     if len(fams) < 2 or n_aug <= 0:
         return [], 0
     out, seen, attempts = [], set(), 0
-    max_attempts = max(200, n_aug * max_attempts_factor)
+    # Yield collapses as `seen` fills (limited valid-recomb diversity from junction-matching),
+    # so cap attempts tightly + an absolute ceiling — give up fast rather than grind to a huge
+    # n_aug. Returning fewer-but-valid recombinations is fine; the caller caps n_aug too.
+    max_attempts = min(attempt_ceiling, max(2000, n_aug * max_attempts_factor))
     while len(out) < n_aug and attempts < max_attempts:
         attempts += 1
         fa, fb = rng.sample(fams, 2)

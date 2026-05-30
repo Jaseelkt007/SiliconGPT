@@ -138,8 +138,11 @@ def main():
     if aug and aug != "none":
         if aug == "cross_family_recomb":
             from process_logic.dataset import cross_family_recomb
-            ratio = float(cfg.get("data.aug_ratio", cfg.get("aug_ratio", 0.3)))
-            n_aug = int(ratio * len(train_ex))
+            ratio = float(cfg.get("data.aug_ratio", cfg.get("aug_ratio", 0.15)))
+            # cap n_aug: valid-recomb diversity is limited, so a huge target just burns time
+            # at near-zero marginal yield. A few thousand family-agnostic orderings is plenty.
+            aug_cap = int(cfg.get("data.aug_cap", cfg.get("aug_cap", 6000)))
+            n_aug = min(int(ratio * len(train_ex)), aug_cap)
             recomb, attempts = cross_family_recomb(train_ex, n_aug, seed=cfg["seed"])
             print(f"augmentation cross_family_recomb: +{len(recomb)} valid / {attempts} attempts "
                   f"(target {n_aug}, yield {len(recomb)/max(1,attempts):.1%})")
