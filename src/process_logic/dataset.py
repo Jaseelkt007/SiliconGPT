@@ -67,6 +67,52 @@ def _round_robin_by_family(examples, seed):
     return merged
 
 
+def cross_family_recomb(examples, n_aug, seed=42, max_attempts_factor=40):
+    """Cross-family recombination augmentation (GECA-style; an OOD lever).
+
+    Splice the prefix of a sequence from family A with the suffix of one from a DIFFERENT
+    family B, then KEEP ONLY validator-valid results — so we never train on a rule-breaking
+    sequence. A shared-step junction heuristic (cut B at a step equal to A's junction step)
+    makes the local transition plausible and raises yield. Survivors are genuinely
+    family-agnostic orderings — the structure the OOD gap lacks.
+
+    Operates on whatever families are present in `examples` (so under --exclude-family it
+    automatically only recombines the trained families — never introduces held-out tokens).
+    Returns (list[(family, steps)], attempts). Family label = the prefix's family (only used
+    for balanced batching; irrelevant to the LM loss when family-conditioning is off).
+    """
+    from process_logic.generation import validate_sequence
+    rng = _random.Random(seed)
+    by_fam = {}
+    for fam, steps in examples:
+        by_fam.setdefault(fam, []).append(steps)
+    fams = sorted(by_fam)
+    if len(fams) < 2 or n_aug <= 0:
+        return [], 0
+    out, seen, attempts = [], set(), 0
+    max_attempts = max(200, n_aug * max_attempts_factor)
+    while len(out) < n_aug and attempts < max_attempts:
+        attempts += 1
+        fa, fb = rng.sample(fams, 2)
+        A, B = rng.choice(by_fam[fa]), rng.choice(by_fam[fb])
+        if len(A) < 4 or len(B) < 4:
+            continue
+        cut_a = rng.randint(2, len(A) - 2)
+        junction = A[cut_a]
+        bmatches = [i for i, s in enumerate(B) if s == junction]
+        cut_b = rng.choice(bmatches) if (bmatches and rng.random() < 0.8) else rng.randint(2, len(B) - 2)
+        cand = A[:cut_a] + B[cut_b:]
+        if not (4 <= len(cand) <= 250):
+            continue
+        key = tuple(cand)
+        if key in seen:
+            continue
+        if len(validate_sequence(cand)) == 0:   # empty violation list == valid
+            seen.add(key)
+            out.append((fa, cand))
+    return out, attempts
+
+
 def build_eval_batches(examples, vocab, batch_size, n_batches=None, seed=0,
                        balanced=True, add_bos=True, add_eos=True):
     """Build a FIXED list of collated numpy batches for stable, unbiased validation.

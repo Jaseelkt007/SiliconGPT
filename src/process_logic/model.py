@@ -28,6 +28,8 @@ class ModelConfig:
     mlp_ratio: float = 8.0 / 3.0
     rope_base: float = 10000.0
     tie_weights: bool = True
+    pos_encoding: str = "rope"   # "rope" | "nope" (no positional encoding; relies on the causal
+                                 # mask for implicit order — a length/compositional-OOD lever)
 
 
 class RMSNorm(nn.Module):
@@ -71,6 +73,7 @@ class Attention(nn.Module):
         self.qkv = nn.Linear(cfg.n_embd, 3 * cfg.n_embd, bias=False)
         self.proj = nn.Linear(cfg.n_embd, cfg.n_embd, bias=False)
         self.dropout = cfg.dropout
+        self.use_rope = (getattr(cfg, "pos_encoding", "rope") == "rope")
 
     def forward(self, x, cos, sin):
         B, T, C = x.shape
@@ -78,8 +81,9 @@ class Attention(nn.Module):
         q = q.view(B, T, self.n_head, self.head_dim).transpose(1, 2)  # [B,H,T,hd]
         k = k.view(B, T, self.n_head, self.head_dim).transpose(1, 2)
         v = v.view(B, T, self.n_head, self.head_dim).transpose(1, 2)
-        q = apply_rope(q, cos[:T].to(q.dtype), sin[:T].to(q.dtype))
-        k = apply_rope(k, cos[:T].to(k.dtype), sin[:T].to(k.dtype))
+        if self.use_rope:   # NoPE: skip rotary; causal mask supplies implicit position
+            q = apply_rope(q, cos[:T].to(q.dtype), sin[:T].to(q.dtype))
+            k = apply_rope(k, cos[:T].to(k.dtype), sin[:T].to(k.dtype))
         y = F.scaled_dot_product_attention(
             q, k, v, is_causal=True,
             dropout_p=self.dropout if self.training else 0.0,

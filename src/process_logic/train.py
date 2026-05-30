@@ -133,6 +133,20 @@ def main():
     if args.smoke:
         train_ex, val_ex = train_ex[:500], val_ex[:200]
 
+    # ---- data augmentation knob (cross-family recombination; OOD lever) ----
+    aug = cfg.get("data.augmentation") or cfg.get("augmentation")
+    if aug and aug != "none":
+        if aug == "cross_family_recomb":
+            from process_logic.dataset import cross_family_recomb
+            ratio = float(cfg.get("data.aug_ratio", cfg.get("aug_ratio", 0.3)))
+            n_aug = int(ratio * len(train_ex))
+            recomb, attempts = cross_family_recomb(train_ex, n_aug, seed=cfg["seed"])
+            print(f"augmentation cross_family_recomb: +{len(recomb)} valid / {attempts} attempts "
+                  f"(target {n_aug}, yield {len(recomb)/max(1,attempts):.1%})")
+            train_ex = train_ex + recomb
+        else:
+            raise ValueError(f"unknown data.augmentation: {aug}")
+
     train_iter = cycle(make_dataloader(train_ex, vocab, batch_size=cfg["batch_size"], shuffle=True))
     eval_batches = build_eval_batches(val_ex, vocab, batch_size=cfg["batch_size"],
                                       n_batches=cfg["eval_iters"], seed=cfg["seed"], balanced=True)
