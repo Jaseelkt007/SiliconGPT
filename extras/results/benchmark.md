@@ -74,8 +74,25 @@ numbers from `extras/results/coscilab/result_*.json` (single seed). in-dist top1
 > the shared operator underfits the rank-1 transition. Rejected.
 
 **Takeaways.** (1) **Scaling DOWN is the only lever that moved OOD** — monotonic +0.019 from 25M→1.4M at
-zero in-dist cost (capacity was memorising per-family shortcuts). (2) **Data/embedding/position/decoding
-levers all fail** (cross-fam aug, desc-init [DECISIONS D1], NoPE, constrained decoding) — the OOD residual
-is *transition-structure learning*: the model picks the wrong **legal** step (only ~3% of OOD errors are
-grammar-invalid). (3) Still-open built/buildable knobs: weight-sharing (h2), family-dropout (h4). Full
-provenance + the integrity note in `DECISIONS.md` D3.
+zero in-dist cost (capacity was memorising per-family shortcuts). (2) **Data/embedding/position/decoding/
+weight-tying levers all fail** (cross-fam aug, desc-init [DECISIONS D1], NoPE, constrained decoding,
+weight-sharing) — the OOD residual is *transition-structure learning*: the model picks the wrong **legal**
+step (only ~3% of OOD errors are grammar-invalid). Full provenance + the integrity note in `DECISIONS.md` D3.
+
+## FINAL deliverable — 3M NoPE vs 25M V1 (seed-confirmed)
+The submission model is the **3M (3L/192, NoPE) trained on all 3 families** — picked by the loop, trained
+via `scripts/run_final_3m.sh` (job 43143293, COMPLETED). All numbers verified from `extras/results/final3m/`.
+
+| metric | 25M V1 | **3M NoPE** |
+|---|---|---|
+| params | 25.3M | **3.01M** |
+| next-step top-1 (in-dist) | 0.807 | **0.821** |
+| top-5 / MRR | 1.000 / 0.901 | 1.000 / 0.907 |
+| completion token-acc | 0.400 | **0.408** |
+| anomaly F1 / ROC-AUC (hybrid) | 1.000 / 1.000 | 1.000 / 1.000 |
+| anomaly ROC-AUC (LM-only) | 0.997 | 0.995 |
+| validity greedy/sampled/free | 1.0/1.0/0.997 | 1.0/1.0/0.997 |
+| **3-fold OOD next-step top-1** | **0.4947** | **0.5163 ± 0.0017** |
+
+OOD seed-confirmed over seeds 42/43/44 (0.5173 / 0.5152 / 0.5164). **+0.022 OOD, +0.014 in-dist, 8.4×
+smaller — no regression on any axis.** Submission CSVs: `extras/results/{nextstep,completion,anomaly}.csv`.

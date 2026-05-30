@@ -1,0 +1,1 @@
+rope_val=0.3289 nope_val=0.3289 PICK=rope

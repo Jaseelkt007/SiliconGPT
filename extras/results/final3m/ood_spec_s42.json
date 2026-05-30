@@ -1,0 +1,3 @@
+{"id":"final3m_ood_s42","title":"3M rope 3-fold OOD seed 42",
+ "overrides":{"model.n_layer":3,"model.n_embd":192,"model.pos_encoding":"rope","train.seed":42},
+ "ood":{"folds":["ic","igbt","mosfet"]},"tasks":["nextstep","completion","ood_detect"]}

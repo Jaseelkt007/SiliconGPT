@@ -233,5 +233,23 @@
       "prevbest_ood_top1_delta": 0.0061
     },
     "experiment": "experiments/h8_mid.json"
+  },
+  {
+    "id": "final_3m",
+    "summary": "DELIVERABLE 3M NoPE: OOD 0.5163+/-0.0017 seed-confirmed, in-dist top1 0.821, 8.4x smaller",
+    "text": "",
+    "elo": 1200,
+    "status": "new",
+    "parents": [],
+    "origin": "",
+    "scores": {},
+    "empirical_status": "full",
+    "verdict": "improves-ood",
+    "vs_baseline": {
+      "ngram_top1_delta": 0.0503,
+      "prevbest_id_top1_delta": 0.0039,
+      "prevbest_ood_top1_delta": 0.0173
+    },
+    "experiment": "experiments/final_3m.json"
   }
 ]

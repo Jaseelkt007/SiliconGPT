@@ -14,7 +14,8 @@
     "augnope": 1200,
     "h8_tiny": 1200,
     "h8_xsmall": 1200,
-    "h8_mid": 1200
+    "h8_mid": 1200,
+    "final_3m": 1200
   },
   "matches": [
     {
@@ -999,6 +1000,102 @@
               "exact_match": 0.0,
               "norm_edit_dist": 0.4822,
               "token_acc": 0.1385,
+              "n": 200
+            }
+          }
+        },
+        "ood_detect": {
+          "auroc": 1.0,
+          "per_fold": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      }
+    },
+    "final_3m": {
+      "tier": "full",
+      "verdict": "improves-ood",
+      "vs_baseline": {
+        "ngram_top1_delta": 0.0503,
+        "prevbest_id_top1_delta": 0.0039,
+        "prevbest_ood_top1_delta": 0.0173
+      },
+      "metrics": {
+        "id": {
+          "nextstep": {
+            "top1": 0.8111,
+            "top3": 0.9964,
+            "top5": 0.9997,
+            "mrr": 0.9032,
+            "n": 3600
+          },
+          "completion": {
+            "exact_match": 0.0,
+            "norm_edit_dist": 0.2216,
+            "token_acc": 0.4053,
+            "n": 600
+          }
+        },
+        "ood": {
+          "nextstep": {
+            "top1": 0.512,
+            "top3": 0.6703,
+            "top5": 0.6858,
+            "mrr": 0.5913,
+            "n_folds": 3
+          },
+          "completion": {
+            "exact_match": 0.0,
+            "norm_edit_dist": 0.3907,
+            "token_acc": 0.1961,
+            "n_folds": 3
+          }
+        },
+        "ood_per_fold": {
+          "ic": {
+            "nextstep": {
+              "top1": 0.4517,
+              "top3": 0.6208,
+              "top5": 0.6408,
+              "mrr": 0.5369,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.4875,
+              "token_acc": 0.1815,
+              "n": 200
+            }
+          },
+          "igbt": {
+            "nextstep": {
+              "top1": 0.5225,
+              "top3": 0.665,
+              "top5": 0.6767,
+              "mrr": 0.5941,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.3123,
+              "token_acc": 0.206,
+              "n": 200
+            }
+          },
+          "mosfet": {
+            "nextstep": {
+              "top1": 0.5617,
+              "top3": 0.725,
+              "top5": 0.74,
+              "mrr": 0.6429,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.3722,
+              "token_acc": 0.2007,
               "n": 200
             }
           }

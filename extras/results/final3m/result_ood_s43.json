@@ -1,0 +1,141 @@
+{
+  "id": "final3m_ood_s43",
+  "title": "3M rope 3-fold OOD seed 43",
+  "tier": "full",
+  "status": "done",
+  "device": "cuda",
+  "config": {
+    "overrides": {
+      "model.n_layer": 3,
+      "model.n_embd": 192,
+      "model.pos_encoding": "rope",
+      "train.seed": 43
+    },
+    "folds": [
+      "ic",
+      "igbt",
+      "mosfet"
+    ],
+    "max_eval_per_family": null
+  },
+  "train": {
+    "id": {
+      "final_val_loss": 0.3288,
+      "wall_s": 51.7
+    },
+    "ood": {
+      "ic": {
+        "final_val_loss": 0.3084,
+        "wall_s": 52.3
+      },
+      "igbt": {
+        "final_val_loss": 0.3356,
+        "wall_s": 51.1
+      },
+      "mosfet": {
+        "final_val_loss": 0.3351,
+        "wall_s": 51.4
+      }
+    }
+  },
+  "metrics": {
+    "id": {
+      "nextstep": {
+        "top1": 0.8067,
+        "top3": 0.9972,
+        "top5": 0.9997,
+        "mrr": 0.9008,
+        "n": 3600
+      },
+      "completion": {
+        "exact_match": 0.0017,
+        "norm_edit_dist": 0.2337,
+        "token_acc": 0.4087,
+        "n": 600
+      }
+    },
+    "ood": {
+      "nextstep": {
+        "top1": 0.5019,
+        "top3": 0.6739,
+        "top5": 0.6867,
+        "mrr": 0.5869,
+        "n_folds": 3
+      },
+      "completion": {
+        "exact_match": 0.0,
+        "norm_edit_dist": 0.4998,
+        "token_acc": 0.1665,
+        "n_folds": 3
+      }
+    },
+    "ood_per_fold": {
+      "ic": {
+        "nextstep": {
+          "top1": 0.4442,
+          "top3": 0.6308,
+          "top5": 0.6475,
+          "mrr": 0.5381,
+          "n": 1200
+        },
+        "completion": {
+          "exact_match": 0.0,
+          "norm_edit_dist": 0.4827,
+          "token_acc": 0.1796,
+          "n": 200
+        }
+      },
+      "igbt": {
+        "nextstep": {
+          "top1": 0.5033,
+          "top3": 0.675,
+          "top5": 0.6817,
+          "mrr": 0.5847,
+          "n": 1200
+        },
+        "completion": {
+          "exact_match": 0.0,
+          "norm_edit_dist": 0.3483,
+          "token_acc": 0.1762,
+          "n": 200
+        }
+      },
+      "mosfet": {
+        "nextstep": {
+          "top1": 0.5583,
+          "top3": 0.7158,
+          "top5": 0.7308,
+          "mrr": 0.638,
+          "n": 1200
+        },
+        "completion": {
+          "exact_match": 0.0,
+          "norm_edit_dist": 0.6683,
+          "token_acc": 0.1438,
+          "n": 200
+        }
+      }
+    },
+    "ood_detect": {
+      "auroc": 1.0,
+      "per_fold": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  },
+  "baselines": {
+    "ngram_top1": 0.7608,
+    "ngram_token_acc": 0.2827,
+    "prevbest_id_top1": 0.8111,
+    "prevbest_id_token_acc": 0.4053,
+    "prevbest_ood_top1": 0.4947
+  },
+  "vs_baseline": {
+    "ngram_top1_delta": 0.0459,
+    "prevbest_id_top1_delta": -0.0044,
+    "prevbest_ood_top1_delta": 0.0072
+  },
+  "verdict": "neutral"
+}

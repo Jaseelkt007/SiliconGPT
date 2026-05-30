@@ -1,0 +1,18 @@
+
+== Task 1 — Next-step ==
+  ALL     n=3600  top1=0.811 top3=0.996 top5=1.000 mrr=0.903
+  mosfet  n=1200  top1=0.832 top3=0.995 top5=1.000 mrr=0.914
+  igbt    n=1200  top1=0.807 top3=0.997 top5=1.000 mrr=0.901
+  ic      n=1200  top1=0.795 top3=0.998 top5=0.999 mrr=0.894
+
+== Task 2 — Completion ==
+  ALL     n=600   exact_match=0.000 norm_edit_dist=0.222 token_acc=0.405
+  mosfet  n=200   exact_match=0.000 norm_edit_dist=0.159 token_acc=0.463
+  igbt    n=200   exact_match=0.000 norm_edit_dist=0.222 token_acc=0.464
+  ic      n=200   exact_match=0.000 norm_edit_dist=0.284 token_acc=0.289
+
+== Task 3 — Anomaly ==
+  ALL     n=1000  acc=1.000 precision=1.000 recall=1.000 f1=1.000 roc_auc=1.000 rule_attr=0.910
+  mosfet  n=341   acc=1.000 precision=1.000 recall=1.000 f1=1.000 roc_auc=1.000 rule_attr=0.894
+  igbt    n=358   acc=1.000 precision=1.000 recall=1.000 f1=1.000 roc_auc=1.000 rule_attr=0.933
+  ic      n=301   acc=1.000 precision=1.000 recall=1.000 f1=1.000 roc_auc=1.000 rule_attr=0.900

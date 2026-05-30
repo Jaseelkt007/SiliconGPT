@@ -1,0 +1,6 @@
+
+== Task 3 — Anomaly ==
+  ALL     n=1000  acc=0.819 precision=0.688 recall=1.000 f1=0.815 roc_auc=0.995 rule_attr=0.000
+  mosfet  n=341   acc=0.974 precision=0.940 recall=1.000 f1=0.969 roc_auc=1.000 rule_attr=0.000
+  igbt    n=358   acc=0.966 precision=0.925 recall=1.000 f1=0.961 roc_auc=0.999 rule_attr=0.000
+  ic      n=301   acc=0.468 precision=0.407 recall=1.000 f1=0.579 roc_auc=1.000 rule_attr=0.000

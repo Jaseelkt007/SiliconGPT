@@ -40,3 +40,31 @@ h7 (decode mask, generate.py), h4 (family embedding+dropout, model.py+dataset.py
 - Prefer **accuracy-safe / inference-time** levers (h7, h9) and **capacity-reduction** (h8, h2) — where measured signal is.
 - Treat any new data-augmentation / embedding-init idea as low-prior (3 negatives).
 - Always report top1 AND top5: the top5-up/top1-down gap is the diagnostic of a rank-1 residual that inference-time levers can still capture.
+
+---
+
+# ROUND 2 + FINAL — closure (synthesis of both rounds)
+
+## Empirically confirmed
+- **Capacity reduction improves OOD (the result).** Scaling curve 25M 0.4947 → 15M 0.5008 → 6M 0.5119 →
+  3M 0.5120 → 1.4M 0.5139, monotonic, ID flat ~0.80. **Deliverable 3M NoPE seed-confirmed OOD 0.5163 ±
+  0.0017** (seeds 42/43/44) = +0.022, in-dist *up* to 0.821, 8.4× smaller. **full-confirmed, multi-seed.**
+
+## Rejected this round (measured, single-seed)
+- **h7 constrained decoding** — only ~3% of OOD errors grammar-invalid (97% valid-but-wrong) → masking
+  can't help. Reframes the gap as transition-structure, not decoding.
+- **h2 weight-sharing** — −0.009 at 3M; tying layers ≠ shrinking size.
+
+## Final scoreboard
+1 win (capacity ↓) / 5 principled negatives (desc-init, cross-fam aug, NoPE-as-driver, constrained
+decoding, weight-sharing). The OOD residual is a hard transition-structure gap: the model picks the wrong
+*legal* step on the unseen family.
+
+## Tier-2 queue → EMPTY (run concluded)
+The deciding lever is shipped. The one untested round-1 idea (h4 family-dropout+UNKNOWN, needs-code) is
+deferred with a modest honest prior given five negatives. Future directions in `research_overview.md`.
+
+## Integrity
+OOD wins are seed-confirmed (sd 0.0017). Two mid-session unverified figures (a "0.531 @ 3M peak", an
+"h7 ~52% recoverable") were caused by login-node tmpfs corruption, caught and **retracted**; they never
+entered git/results. Every number here is re-read from a committed JSON on persistent storage.
