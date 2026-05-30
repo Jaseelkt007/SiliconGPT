@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 import math
+import os
 import random
 import sys
 import time
@@ -81,12 +82,21 @@ def main():
     ap.add_argument("--exclude-family", default=None,
                     help="train/val WITHOUT this family (mosfet|igbt|ic) for the OOD experiment")
     ap.add_argument("--run-name", default="v1")
+    ap.add_argument("--wandb", action="store_true",
+                    help="enable Weights & Biases logging (overrides config wandb:false)")
+    ap.add_argument("--wandb-mode", default=None,
+                    help="online | offline | disabled (sets WANDB_MODE; offline = log locally, "
+                         "then `wandb sync` from a login node)")
     args = ap.parse_args()
 
     cfg = load_yaml(args.config)
     mcfg = load_yaml(args.model_config)
     if args.data_dir:
         cfg["data_dir"] = args.data_dir
+    if args.wandb:
+        cfg["wandb"] = True
+    if args.wandb_mode:
+        os.environ["WANDB_MODE"] = args.wandb_mode
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
 
     if args.smoke:
