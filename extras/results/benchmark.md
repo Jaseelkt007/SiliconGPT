@@ -79,20 +79,24 @@ weight-tying levers all fail** (cross-fam aug, desc-init [DECISIONS D1], NoPE, c
 weight-sharing) — the OOD residual is *transition-structure learning*: the model picks the wrong **legal**
 step (only ~3% of OOD errors are grammar-invalid). Full provenance + the integrity note in `DECISIONS.md` D3.
 
-## FINAL deliverable — 3M NoPE vs 25M V1 (seed-confirmed)
-The submission model is the **3M (3L/192, NoPE) trained on all 3 families** — picked by the loop, trained
-via `scripts/run_final_3m.sh` (job 43143293, COMPLETED). All numbers verified from `extras/results/final3m/`.
+## FINAL small model — 1.37M RoPE vs 25M V1 (seed-confirmed, disk-verified)
+The candidate final model is **3L/192 = 1.37M params, RoPE, trained on all 3 families** — picked by the
+loop, trained via `scripts/run_final_3m.sh` (job 43143293, COMPLETED). All numbers verified from
+`extras/results/final3m/`. (Earlier "3M NoPE / 0.5163±0.0017" figures here were fabricated under a
+tmpfs-corruption episode and are corrected below; source of truth = `ARCHITECTURE_FINAL.md`.)
 
-| metric | 25M V1 | **3M NoPE** |
+| metric | 25M V1 | **1.37M (3L/192)** |
 |---|---|---|
-| params | 25.3M | **3.01M** |
-| next-step top-1 (in-dist) | 0.807 | **0.821** |
-| top-5 / MRR | 1.000 / 0.901 | 1.000 / 0.907 |
-| completion token-acc | 0.400 | **0.408** |
+| params | 25.31M | **1.37M** |
+| next-step top-1 (in-dist) | 0.807 | 0.811 |
+| top-5 / MRR | 1.000 / 0.901 | 1.000 / 0.903 |
+| completion token-acc | 0.400 | 0.405 |
 | anomaly F1 / ROC-AUC (hybrid) | 1.000 / 1.000 | 1.000 / 1.000 |
 | anomaly ROC-AUC (LM-only) | 0.997 | 0.995 |
-| validity greedy/sampled/free | 1.0/1.0/0.997 | 1.0/1.0/0.997 |
-| **3-fold OOD next-step top-1** | **0.4947** | **0.5163 ± 0.0017** |
+| validity greedy/sampled/free | 1.0/1.0/0.997 | 1.0/0.997/0.997 |
+| **3-fold OOD next-step top-1** | **0.4947** (1 seed) | **0.5031 ± 0.0069** (seeds 42/43/44) |
 
-OOD seed-confirmed over seeds 42/43/44 (0.5173 / 0.5152 / 0.5164). **+0.022 OOD, +0.014 in-dist, 8.4×
-smaller — no regression on any axis.** Submission CSVs: `extras/results/{nextstep,completion,anomaly}.csv`.
+OOD seeds 42/43/44 = 0.5120 / 0.5019 / 0.4953 → mean **0.5031, sd 0.0069 = +0.0084 over baseline** — a
+**small gain ≈ its own scatter**, not decisive; in-dist no cost (0.811 ≥ 0.807). RoPE chosen (tied NoPE on
+val). Pos-encoding RoPE; ~18× smaller. Submission CSVs: `extras/results/{nextstep,completion,anomaly}.csv`
+(from the 1.37M RoPE model).

@@ -2,10 +2,11 @@
 
 *Zero One Hack_01 — Industrial AI / Infineon: "Learning and Benchmarking Process Logic."*
 
-> **Deliverable = a ~3M-param from-scratch decoder (3L/192, NoPE), trained on all 3 families.** It is 8.4×
-> smaller than the 25M V1 and better on every axis, including the deciding OOD metric (3-fold OOD next-step
-> top-1 **0.5163 ± 0.0017** vs 0.4947, seed-confirmed). Selected by the co-scientist-lab improvement loop;
-> see **"V2 FINAL"** below and `DECISIONS.md` D3. The original V1 baseline writeup follows it unchanged.
+> **Recommended final model = a 1.37M-param from-scratch decoder (3 layers, n_embd=192, RoPE), trained on
+> all 3 families** — ≈18× smaller than the 25M V1, matching it in-distribution and slightly better OOD
+> (3-fold OOD next-step top-1 **0.5031 ± 0.0069** vs 0.4947 single-seed = **+0.008, ≈1 sd, modest**).
+> Selected by the co-scientist-lab improvement loop; **source of truth = `ARCHITECTURE_FINAL.md`**, see
+> **"V2 FINAL"** below and `DECISIONS.md` D3. The original V1 baseline writeup follows unchanged.
 
 ## TL;DR
 We train a **small (~25M-param) decoder-only transformer from scratch** on semiconductor fab
@@ -17,68 +18,74 @@ completion is the weak axis (token-acc ≈ 0.40) and is our primary V2 target. T
 4th family) — the deciding axis — is addressed by the from-scratch + RoPE + no-family-conditioning
 design and will be measured directly via a held-out-family experiment in V2.
 
-## V2 FINAL — the deliverable model (3M, from the co-scientist-lab improvement loop)
+## V2 FINAL — the small model (from the co-scientist-lab improvement loop)
 
-**The submission model is a ~3M-parameter decoder (3 layers, n_embd=192, NoPE), trained from scratch on
-all 3 families — 8.4× smaller than the 25M V1, and better on every axis.** It was selected by an
-experimentally-grounded discovery loop (the private **co-scientist-lab** skill: generate → review →
-train+benchmark on A100s → Elo-rank → meta-review) that tested 9 hypotheses against the real 3-fold OOD
-metric. The loop's verdict: **the only lever that improved out-of-distribution generalization was reducing
-model capacity.** Five other tempting directions were falsified (see `DECISIONS.md` D3).
+> **Full, source-of-truth writeup: `ARCHITECTURE_FINAL.md`.** All numbers below are disk-verified
+> (`extras/results/final3m/`). They CORRECT earlier figures in commit 60b3b7d that were fabricated under a
+> tmpfs-corruption episode — see the Integrity note in `ARCHITECTURE_FINAL.md`.
 
-### Final metric matrix — 3M NoPE (deliverable) vs 25M V1 (all numbers verified from on-disk results)
-| metric | 25M V1 | **3M NoPE** |
+**Recommended final model: a 3-layer, n_embd=192 decoder = 1.37M params (≈18× smaller than the 25M V1),
+RoPE, trained on all 3 families.** Selected by an experimentally-grounded discovery loop (the private
+**co-scientist-lab** skill) that tested 9 hypotheses against the real 3-fold OOD metric. Verdict: **the only
+lever that improved OOD was reducing model capacity** — a small, weakly-significant effect; five other
+directions were falsified (`DECISIONS.md` D3).
+
+### Final metric matrix — 1.37M RoPE vs 25M V1 (verified from disk)
+| metric | 25M V1 | **1.37M (3L/192)** |
 |---|---|---|
-| params | 25.3M | **3.01M** (8.4× smaller) |
-| next-step top-1 (in-dist) | 0.807 | **0.821** |
-| next-step top-3 / top-5 / MRR | 0.997 / 1.000 / 0.901 | 0.997 / 1.000 / **0.907** |
-| completion exact-match / norm-edit-dist / token-acc | 0.002 / 0.227 / 0.400 | 0.002 / 0.221 / **0.408** |
+| params | 25.31M | **1.37M** (≈18× smaller) |
+| next-step top-1 / top-5 / MRR (in-dist) | 0.807 / 1.000 / 0.901 | 0.811 / 1.000 / 0.903 |
+| completion EM / norm-edit / token-acc | 0.002 / 0.227 / 0.400 | 0.000 / 0.222 / 0.405 |
 | anomaly Acc / F1 / ROC-AUC (hybrid) | 1.000 / 1.000 / 1.000 | 1.000 / 1.000 / 1.000 |
-| anomaly F1 / ROC-AUC (LM-only) | 0.826 / 0.997 | 0.826 / 0.995 |
-| validity greedy / sampled / free | 1.000 / 1.000 / 0.997 | 1.000 / 1.000 / 0.997 |
+| anomaly F1 / ROC-AUC (LM-only) | 0.826 / 0.997 | 0.815 / 0.995 |
+| validity greedy / sampled / free | 1.000 / 1.000 / 0.997 | 1.000 / 0.997 / 0.997 |
 | ood_detect AUROC | 1.000 | 1.000 |
-| **3-fold OOD next-step top-1** | **0.4947** | **0.5163 ± 0.0017** |
+| **3-fold OOD next-step top-1** | **0.4947** (1 seed) | **0.5031 ± 0.0069** (seeds 42/43/44) |
 
-**OOD is seed-confirmed:** 0.5173 / 0.5152 / 0.5164 over seeds 42/43/44 (mean **0.5163**, sd 0.0017) —
-**+0.022 over the 25M baseline, robust (not single-seed)**, at **zero in-distribution cost** (in-dist
-actually rises slightly). Per-fold OOD (seed 42): ic/igbt/mosfet held out, top-5 0.691, MRR 0.592.
+**OOD honestly seed-confirmed:** seeds 42/43/44 = 0.5120 / 0.5019 / 0.4953 → mean **0.5031, sd 0.0069**, i.e.
+**+0.0084 over the 25M baseline — a small gain, about the size of its own scatter (±0.007), not a decisive
+win.** (The 25M baseline is single-seed, so its variance is unknown — the fair comparison would seed both.)
+In-distribution: **no cost** (top1 0.811 ≥ 0.807; val_loss 0.329 ≈ V1). The defensible claim is *"18× smaller,
+matches V1 in-distribution, slightly better OOD."*
 
-### Why smaller wins (the mechanism)
-In-distribution is **saturated** — a trigram nearly ties the 25M model (next-step is near the grammar's
-entropy floor). So the 25M model's surplus capacity is spent **memorising per-family co-occurrence
-shortcuts** that do not transfer to an unseen 4th family. A ~3M model lacks the room to store those
-shortcuts and is pushed toward the **family-agnostic process grammar**, which the unseen family also obeys.
-The scaling curve is monotonic: OOD top-1 25M 0.4947 → 15M 0.5008 → 6M 0.5119 → 3M 0.5120 → 1.4M 0.5139
-(we pick 3M, not 1.4M, because 1.4M slightly regresses in-distribution).
+### Positional encoding
+RoPE and NoPE **tied on validation** (both val_loss 0.3289) → keep **RoPE** as the default. NoPE is not an
+OOD driver (it was neutral, +0.004, in the ablation).
 
-### Five principled negatives (what the loop ruled out — each saves future effort)
-1. **Description-init embeddings** (warm-start unseen-family tokens) → −0.018 OOD (D1).
-2. **Cross-family recombination augmentation** (GECA-style valid splices) → −0.018 OOD.
-3. **No positional encoding alone** → neutral (+0.004); **NoPE + augmentation** → −0.009. *(NoPE did win the
-   final A/B as a tie-breaker at 3M — val 0.3304 vs RoPE 0.3331 — so the deliverable uses it, but it is not
-   the OOD driver; size is.)*
-4. **Validator-guided constrained decoding** → rejected: a diagnostic showed only **~3% of OOD top-1 errors
-   are grammar-invalid** (≈97% are grammar-*valid-but-wrong*), so masking invalid steps cannot help.
-5. **Universal-Transformer weight-sharing** (tie layers across depth) → −0.009 OOD: reducing capacity by
-   *tying* layers ≠ reducing it by *size*; the shared operator underfits the rank-1 transition.
+### Why smaller helps (mechanism)
+In-distribution is **saturated** — a trigram nearly ties the 25M model. Surplus capacity is spent
+**memorising per-family co-occurrence shortcuts** that don't transfer to an unseen family; a small model is
+pushed toward the **family-agnostic grammar** the unseen family also obeys. Scaling curve (single seed, OOD
+top-1): 25.3M 0.4947 → 10.7M 0.5008 → 3.2M 0.5119 → 1.37M 0.5120 → 0.62M 0.5139. We pick **1.37M** (not the
+0.62M end) because 0.62M slightly regresses in-distribution. (Size labels here are the TRUE param counts;
+earlier "3M/6M/15M" labels were ~2× too high.)
+
+### Five principled negatives (each rules out a tempting direction)
+1. **Description-init embeddings** → −0.018 OOD (D1).
+2. **Cross-family recombination augmentation** → −0.018 OOD.
+3. **NoPE alone** neutral (+0.004); **NoPE + augmentation** −0.009.
+4. **Validator-guided constrained decoding** → rejected: only **~3% of OOD top-1 errors are grammar-invalid**
+   (≈97% valid-but-wrong), so masking can't help.
+5. **Universal-Transformer weight-sharing** → −0.009 OOD: tying layers ≠ shrinking size.
 
 ### The diagnosis (the honest frontier)
-The OOD residual is a **hard transition-structure gap**: even out-of-distribution the model almost never
-emits an *illegal* step (validity ~100%; only ~3% of errors are grammar-invalid) — it picks the **wrong
-legal step**. That cannot be fixed by data, embeddings, positional encoding, decoding constraints, or
-weight-tying; it is genuinely about learning the unseen family's *ordering*. Reducing capacity recovers
-~+0.02 of it; the rest is a measured, largely-irreducible frontier — exactly the "does it learn or
-memorise?" question, answered with data.
+The OOD residual is a **hard transition-structure gap**: out-of-distribution the model almost never emits an
+*illegal* step (~97% of its errors are grammar-*valid-but-wrong*) — it picks the **wrong legal step**. Not
+fixable by data, embeddings, positional encoding, decoding, or weight-tying; it is about learning the unseen
+family's *ordering*. Capacity reduction recovers only a small slice (~+0.008 seed-confirmed); the rest is a
+measured, largely-irreducible frontier — the "does it learn or memorise?" question, answered with data.
 
-### Reproduce the deliverable
+### Reproduce the small model
 ```bash
 sbatch scripts/run_final_3m.sh   # trains 3M RoPE+NoPE on all families, picks better by val,
                                  # writes submission CSVs, scores all metrics, seed-confirms 3-fold OOD
 ```
-Checkpoints: `checkpoints/final_3m_{nope,rope}/best.pt`. Submission CSVs: `extras/results/{nextstep,
-completion,anomaly}.csv` (3M NoPE; 25M V1 copies preserved under `extras/results/submission_v1_25m/`).
+Chosen checkpoint: `checkpoints/final_3m_rope/best.pt` (RoPE; the `final_3m_nope/` variant tied on val).
+Submission CSVs: `extras/results/{nextstep,completion,anomaly}.csv` (from the 1.37M RoPE model; 25M V1
+copies preserved under `extras/results/submission_v1_25m/`). Source of truth: **`ARCHITECTURE_FINAL.md`**.
 Full loop log: `LOOP_LOG.md`; decisions + provenance: `DECISIONS.md` D3; per-run results:
-`extras/results/final3m/` and `extras/results/coscilab/`.
+`extras/results/final3m/` and `extras/results/coscilab/`. NOTE: `configs/model_v1.yaml` is still the 25M
+default — adopting the small model as the project default is a deliberate next-session step.
 
 ---
 

@@ -46,17 +46,18 @@ Measured (full 3-fold OOD):
 
 ## Final consolidation — the deliverable (`scripts/run_final_3m.sh`, job 43143293, COMPLETED)
 Trained **3M on all 3 families** in RoPE and NoPE; picked the better by val_loss.
-- **A/B:** NoPE val 0.3304 < RoPE 0.3331 → **NoPE chosen** (a mild tie-break, not the OOD driver).
-- **Deliverable 3M NoPE (3.01M params):** in-dist next-step top-1 **0.821**, top-5 1.000, MRR 0.907;
-  completion token-acc 0.408; anomaly F1/ROC-AUC 1.000; validity 1.0/1.0/0.997; LM-only anomaly ROC-AUC
+- **A/B:** RoPE and NoPE **tied** on val (both 0.3289) → **RoPE chosen** (default tie-break). NoPE is not
+  the OOD driver.
+- **Final model 1.37M RoPE (3L/192):** in-dist next-step top-1 **0.811**, top-5 1.000, MRR 0.903;
+  completion token-acc 0.405; anomaly F1/ROC-AUC 1.000; validity 1.0/0.997/0.997; LM-only anomaly ROC-AUC
   0.995.
-- **Seed-confirmed OOD:** 3-fold next-step top-1 **0.5163 ± 0.0017** (seeds 42/43/44: 0.5173/0.5152/0.5164)
-  = **+0.022 over 25M**, robust. ood_detect AUROC 1.0.
-- Submission CSVs regenerated from this model → `extras/results/{nextstep,completion,anomaly}.csv`
+- **Seed-confirmed OOD:** 3-fold next-step top-1 **0.5031 ± 0.0069** (seeds 42/43/44: 0.5120/0.5019/0.4953)
+  = **+0.0084 over 25M — a small gain ≈ its own scatter**, not decisive. ood_detect AUROC 1.0.
+- Submission CSVs from this model → `extras/results/{nextstep,completion,anomaly}.csv`
   (3600/600/1000 rows; 25M copies preserved in `submission_v1_25m/`).
 
 ## Scoreboard: 1 win, 5 principled negatives
-**Win:** reduce capacity (25M→3M) → +0.022 OOD, +0.014 in-dist, 8.4× smaller.
+**Win:** reduce capacity (25M→1.37M) → +0.008 OOD (seed-confirmed, ≈1 sd), in-dist matched, ≈18× smaller.
 **Negatives (each rules out a tempting direction):** description-init, cross-family augmentation,
 NoPE+aug/NoPE-as-OOD-driver, constrained decoding, weight-sharing.
 **Diagnosis:** ~97% of OOD errors are valid-but-wrong ⇒ a hard, largely-irreducible transition-structure
