@@ -116,11 +116,26 @@ the frontier sharply.
 - **NoPE** (no positional encoding vs RoPE): 0.4947→0.4983 (**+0.004**, neutral); a safe, free default but
   not a driver.
 
-**Cumulative:** four independent levers that touch *data, embeddings, position, or decoding* all fail to
-move OOD top1 (desc-init, cross-family aug, NoPE, constrained decoding). The **one** lever that moved it was
-**removing capacity**. Open, still-promising directions (built or buildable as config knobs, not yet
-GPU-confirmed): Universal-Transformer **weight-sharing** (h2) and **family-dropout + UNKNOWN-row**
-conditioning (h4), both tested at the small base.
+### D3.4 — Universal-Transformer weight-sharing (h2) → **REJECTED**
+**Hypothesis:** reduce capacity *structurally* — reuse one decoder block across all depths — to force a
+single shared transition operator (Dehghani 2019; Csordás 2021), stacking with the size-reduction win.
+
+**Experiment:** at the OOD-best ~3M base (n_layer=3, n_embd=192), weight_share off vs on, full 3-fold OOD.
+
+**Result:** OOD top1 0.5120→**0.5033 (−0.009)**, completion 0.196→0.168, ID flat (0.811→0.812). Same
+top5-up/top1-down signature.
+
+**Learning:** reducing capacity by *tying layers* does **not** reproduce the gain from reducing it by
+*size*. A single block reused 3× underfits the rank-1 transition decision (its OOD top-5 rises but top-1
+falls). So the scaling win is about *total free parameters available to memorise*, not about enforcing a
+recurrent/iterative computation. Rejected.
+
+**Cumulative:** **five** independent levers touching *data, embeddings, position, decoding, or weight-tying*
+all fail to move OOD top1 (desc-init, cross-family aug, NoPE, constrained decoding, weight-sharing). The
+**one** lever that moved it was **plain size reduction**. Remaining un-GPU-tested idea from the run:
+**family-dropout + UNKNOWN-row** conditioning (h4) — knob not built; deferred. The evidence strongly
+suggests the OOD residual is a hard, largely-irreducible *transition-structure* gap, partially mitigated
+(~+0.02) by training a smaller model.
 
 **Process note (honesty):** during the run, intermittent scratch-tmpfs corruption produced garbled tool
 output; two unverified figures were briefly stated mid-session (a "0.531 @ 3M peak" and an "h7 ~52%

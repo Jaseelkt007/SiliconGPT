@@ -63,9 +63,15 @@ numbers from `extras/results/coscilab/result_*.json` (single seed). in-dist top1
 | model size 6.4M | 0.5119 | +0.017 | improves-ood |
 | model size 14.7M | 0.5008 | +0.006 | neutral |
 | NoPE (no pos-enc) | 0.4983 | +0.004 | neutral |
+| weight-sharing on 3M (h2) | 0.5033 | −0.009 vs 3M ctrl | rejected |
 | NoPE + cross-fam aug | 0.4861 | −0.009 | rejected |
 | cross-family aug | 0.4767 | −0.018 | rejected |
 | constrained decoding (h7) | — | ~0 (≈97% errors valid-but-wrong) | rejected |
+
+> h2 Universal-Transformer **weight-sharing** (one block reused across depth) at the 3M base:
+> OOD 0.5120→0.5033 (−0.009), completion 0.196→0.168, ID flat — same top5-up/top1-down signature.
+> Reducing capacity *structurally* (tying layers) does NOT reproduce the gain from reducing it by *size*;
+> the shared operator underfits the rank-1 transition. Rejected.
 
 **Takeaways.** (1) **Scaling DOWN is the only lever that moved OOD** — monotonic +0.019 from 25M→1.4M at
 zero in-dist cost (capacity was memorising per-family shortcuts). (2) **Data/embedding/position/decoding

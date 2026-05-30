@@ -916,6 +916,102 @@
           ]
         }
       }
+    },
+    "h2": {
+      "tier": "full",
+      "verdict": "neutral",
+      "vs_baseline": {
+        "ngram_top1_delta": 0.0514,
+        "prevbest_id_top1_delta": 0.005,
+        "prevbest_ood_top1_delta": 0.0086
+      },
+      "metrics": {
+        "id": {
+          "nextstep": {
+            "top1": 0.8122,
+            "top3": 0.9969,
+            "top5": 0.9997,
+            "mrr": 0.9038,
+            "n": 3600
+          },
+          "completion": {
+            "exact_match": 0.0017,
+            "norm_edit_dist": 0.2282,
+            "token_acc": 0.409,
+            "n": 600
+          }
+        },
+        "ood": {
+          "nextstep": {
+            "top1": 0.5033,
+            "top3": 0.6772,
+            "top5": 0.6941,
+            "mrr": 0.591,
+            "n_folds": 3
+          },
+          "completion": {
+            "exact_match": 0.0,
+            "norm_edit_dist": 0.429,
+            "token_acc": 0.1682,
+            "n_folds": 3
+          }
+        },
+        "ood_per_fold": {
+          "ic": {
+            "nextstep": {
+              "top1": 0.455,
+              "top3": 0.6342,
+              "top5": 0.6433,
+              "mrr": 0.5434,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.4881,
+              "token_acc": 0.1729,
+              "n": 200
+            }
+          },
+          "igbt": {
+            "nextstep": {
+              "top1": 0.5075,
+              "top3": 0.6792,
+              "top5": 0.7033,
+              "mrr": 0.5939,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.3167,
+              "token_acc": 0.1933,
+              "n": 200
+            }
+          },
+          "mosfet": {
+            "nextstep": {
+              "top1": 0.5475,
+              "top3": 0.7183,
+              "top5": 0.7358,
+              "mrr": 0.6358,
+              "n": 1200
+            },
+            "completion": {
+              "exact_match": 0.0,
+              "norm_edit_dist": 0.4822,
+              "token_acc": 0.1385,
+              "n": 200
+            }
+          }
+        },
+        "ood_detect": {
+          "auroc": 1.0,
+          "per_fold": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      }
     }
   }
 }

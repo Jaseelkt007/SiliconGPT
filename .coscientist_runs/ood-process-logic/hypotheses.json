@@ -63,7 +63,15 @@
     "status": "reviewed",
     "parents": [],
     "origin": "generation:round1",
-    "scores": {}
+    "scores": {},
+    "empirical_status": "full",
+    "verdict": "neutral",
+    "vs_baseline": {
+      "ngram_top1_delta": 0.0514,
+      "prevbest_id_top1_delta": 0.005,
+      "prevbest_ood_top1_delta": 0.0086
+    },
+    "experiment": "experiments/h2.json"
   },
   {
     "id": "h3",
