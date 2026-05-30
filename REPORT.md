@@ -97,6 +97,30 @@ family-specific token co-occurrences unavailable for an unseen family. **This is
 OOD levers must beat.** Likely the biggest single cause is that unseen `ic` tokens keep their random
 init embeddings → description-init embeddings (lever 6) targets this directly.
 
+**Gap decomposition (measured on the 1,200 `ic` next-step examples):** 29 of `ic`'s 130 tokens are
+never trained when `ic` is held out. **22.3%** of `ic` next-step targets are such unseen tokens (the
+OOD model's output row stays random → it *cannot* emit them), and **100%** of prefixes contain ≥1
+unseen token (context corruption). Implied OOD top-1 *on shared/trained targets* ≈ 0.451 / 0.777 ≈
+**0.58** (vs. ID ~0.79). So the −0.34 drop is ~half **mechanical** (unseen-token init — exactly what
+description-init attacks) and ~half **structural** (`ic`'s novel ordering — the true generalization
+residual that description-init will not fix).
+
+**Description-init result — 3-fold OOD, next-step on the held-out family.** Baseline = random init;
+`+desc-init` = embedding warm-started from each step's text (`scripts/build_emb_init.py`). Fill after:
+`bash scripts/run_ood_3fold.sh` (baseline) and `EMB_INIT=emb_init.npz bash scripts/run_ood_3fold.sh`,
+then `pixi run python scripts/ood_summary.py`.
+
+| held-out family | baseline top-1 | +desc-init top-1 | Δ | baseline top-5 | +desc-init top-5 |
+|---|---|---|---|---|---|
+| ic              | 0.451 | _TBD_ | _TBD_ | 0.623 | _TBD_ |
+| igbt            | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| mosfet          | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| **3-fold avg**  | _TBD_ | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+
+*Hypothesis to confirm:* description-init recovers roughly **half-to-two-thirds** of the gap (the
+mechanical unseen-token component), not all of it. The 3-fold average is the honest headline OOD number
+(`ic` alone is the most structurally distinct family, so likely the worst single fold).
+
 ## What worked
 - **Clean, fast, monotonic convergence.** With the fixed family-balanced eval set, val loss descends
   smoothly **0.339 → 0.329** over 4000 iters (no oscillation); top-5 next-step accuracy is **1.000**
