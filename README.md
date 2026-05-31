@@ -76,7 +76,27 @@ python src/process_logic/train.py \
 ### Reproduce the official submission (the judges' path)
 
 Run the trained model on the organizers' eval inputs to produce the three submission files,
-then score with their `eval_metrics.py`:
+then score with their `eval_metrics.py`. Follow the four steps below from a clean checkout —
+no GPU required (the command auto-detects CUDA, else runs on CPU).
+
+**1. Install the environment.**
+
+```bash
+pip install -r requirements.txt        # or use pixi (see "Run it from a clean checkout" above)
+```
+
+**2. Place the two organizer input files at the repo root.** They are *input-only* — the model
+reads only the input columns, no answer columns needed:
+
+| File (at repo root) | Required columns | Used for |
+|---|---|---|
+| `eval_input_valid.csv`   | `EXAMPLE_ID`, `PARTIAL_SEQUENCE` (pipe-separated steps) | next-step **and** completion |
+| `eval_input_anomaly.csv` | `EXAMPLE_ID`, `SEQUENCE` (pipe-separated steps)         | anomaly |
+
+> No organizer files yet? Our own held-out eval CSVs (`data/eval_*.csv`, after
+> `python scripts/build_datasets.py`) have the same input columns and are drop-in compatible.
+
+**3. Run the model to produce the three submission CSVs.**
 
 ```bash
 python src/process_logic/predict.py --ckpt checkpoints/best.pt \
@@ -85,15 +105,18 @@ python src/process_logic/predict.py --ckpt checkpoints/best.pt \
     --completion-input eval_input_valid.csv \
     --anomaly-input    eval_input_anomaly.csv \
     --calib-file       data/val_id.csv
-#    -> extras/results/{nextstep,completion,anomaly}.csv   (organizer submission format)
+#    -> extras/results/{nextstep,completion,anomaly}.csv
+```
 
+**4. Score with the organizers' scorer.**
+
+```bash
 python eval/eval_metrics.py        # official scorer (drop in at event start)
 ```
 
-Formats follow the spec exactly (`generation_rules.md §5`): inputs are pipe-separated
-`PARTIAL_SEQUENCE` / `SEQUENCE`; outputs are `EXAMPLE_ID,RANK_1..RANK_5`,
-`EXAMPLE_ID,PREDICTED_SEQUENCE`, and `EXAMPLE_ID,IS_VALID,SCORE,PREDICTED_RULE`. Our own held-out
-eval CSVs (`data/eval_*.csv`) are drop-in compatible if the organizer files aren't to hand.
+Output formats follow the spec exactly (`generation_rules.md §5`):
+`EXAMPLE_ID,RANK_1..RANK_5` (next-step), `EXAMPLE_ID,PREDICTED_SEQUENCE` (completion),
+and `EXAMPLE_ID,IS_VALID,SCORE,PREDICTED_RULE` (anomaly).
 
 ### Quick CPU demo (no GPU, finishes in seconds)
 
