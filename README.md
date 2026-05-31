@@ -18,6 +18,33 @@ completion · anomaly detection · (post-submission) OOD generalization to a hid
 
 ---
 
+## Benchmark — head-to-head
+
+A **1.37M** from-scratch decoder vs. an n-gram baseline and four frontier LLMs, on our held-out
+eval. **Higher is better** for accuracy, **lower** for latency; **bold = best in column**.
+
+| System | Top-1 | Top-5 | OOD | Completion (token %) | Anomaly F1 | Latency |
+|---|--:|--:|--:|--:|--:|--:|
+| **SiliconGPT** · ours · 1.37M | **81.1%** | **100.0%** | **50.3%** | **40.5%** | **1.000** | 14 ms |
+| n-gram (trigram) · baseline | 76.1% | 100.0% | — | 28.3% | — | **1 ms** |
+| Gemini 3.5-flash · Google API | 55.5% | 78.0% | — | 7.6% | 0.910 | 5.3 s |
+| GPT-5 · OpenAI API | 52.5% | 72.0% | — | — | — | 35.0 s |
+| DeepSeek V3-0324 · open weights | 48.0% | 65.0% | — | 5.6% | 0.603 | 6.5 s |
+| Qwen3.6-35B-A3B · open weights | 41.5% | 63.5% | — | 2.5% | 0.690 | 1.9 s |
+
+**+25.6 pt** vs Gemini on Top-1 · **$0** API cost · **~380×** lower latency than Gemini · **anomaly F1 1.000**.
+
+> Scored on the full **5,200-example** held-out eval (3,600 next-step · 600 completion · 1,000
+> anomaly); the frontier LLMs on a 200-example sample. **OOD** measures generalization to an unseen
+> product family, so it applies only to our trained model; the n-gram and GPT-5 have no anomaly
+> score. "—" = not evaluated. *(Authoritative numbers come from the organizers' `eval_metrics.py`.)*
+
+![SiliconGPT benchmark — head-to-head vs n-gram and frontier LLMs](docs/benchmark.png)
+
+*The same numbers, rendered live in the SiliconGPT dashboard.*
+
+---
+
 ## Run it from a clean checkout
 
 Needs **Python 3.12** and a GPU for training (CPU works for the smoke test + inference). The
