@@ -17,7 +17,7 @@ We trained a small decoder transformer **from scratch** to learn semiconductor-f
 grammar, then built a **measurement-grounded multi-agent discovery loop** (AI Co-Scientist +
 a GPU **Experiment agent**) that searched the architecture space and discovered that a
 **1.37M-parameter** model generalizes *better* out-of-distribution than the 25M baseline — at no
-in-distribution cost. It beats Gemini 3.5-flash / GPT-5 / DeepSeek / Qwen on all three tasks while
+in-distribution cost. It beats Gemini 3.5-flash / GPT-5 / DeepSeek-V3-0324 / Qwen3.6-35B-A3B on all three tasks while
 being ~1000× smaller.
 
 ---
@@ -91,8 +91,8 @@ from `extras/results/` (our scorer; the *authoritative* numbers come from the or
 | n-gram (trigram) | 0.761 | 0.283 | — |
 | Gemini 3.5-flash | 0.555 | 0.076 | 0.910 |
 | GPT-5 | 0.525 | — | — |
-| DeepSeek V3 | 0.480 | 0.056 | 0.603 |
-| Qwen | 0.415 | 0.024 | 0.690 |
+| DeepSeek-V3-0324 | 0.480 | 0.056 | 0.603 |
+| Qwen3.6-35B-A3B | 0.415 | 0.024 | 0.690 |
 
 Raw outputs in `extras/results/` (`benchmark_compare.{md,json}`, the submission CSVs, the
 co-scientist run record). Validity of generated completions: ~99–100%.
@@ -146,7 +146,7 @@ Five levers were tried and **rejected** with measured evidence (each rules out a
 
 - **Open-source libraries:** PyTorch (≥2.2), NumPy, PyYAML, tqdm, Flask + flask-cors (demo backend),
   scikit-learn / matplotlib (plots), wandb (optional). Frontend: React 19, TanStack Start, Vite, Tailwind v4, recharts.
-- **Pre-trained models used:** none (trained from scratch). Frontier LLMs (Gemini/GPT-5/DeepSeek/Qwen)
+- **Pre-trained models used:** none (trained from scratch). Frontier LLMs (Gemini 3.5-flash / GPT-5 / DeepSeek-V3-0324 / Qwen3.6-35B-A3B)
   used only as *benchmark baselines*, not in the product.
 - **External APIs:** none at inference. LLM-baseline scoring used provider APIs offline.
 - **AI coding assistant:** Claude Code (during the hackathon).
