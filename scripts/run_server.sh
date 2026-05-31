@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=sgpt-api
+#SBATCH --account=euhpc_d30_031
 #SBATCH --partition=boost_usr_prod
 #SBATCH --reservation=s_tra_ncc
 #SBATCH --nodes=1
@@ -17,4 +18,6 @@ echo "Port         : ${PORT:-5050}"
 echo "Checkpoint   : ${CHECKPOINT_PATH:-(unset)}"
 export PORT=${PORT:-5050}
 export HOST=0.0.0.0
+export PATH="$HOME/.pixi/bin:$PATH"
+pixi run python -c "import torch; print('CUDA:', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')"
 pixi run python server/app.py
