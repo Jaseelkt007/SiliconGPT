@@ -41,13 +41,18 @@ python src/process_logic/train.py \
 #    -> checkpoints/final_3m_rope/best.pt
 ```
 
+> **The trained deliverable is already committed** at `checkpoints/best.pt` (5.2 MB — the 1.37M
+> RoPE model), so you can **skip step 4 and run inference directly**. Step 4 reproduces the
+> *byte-identical* checkpoint at `checkpoints/final_3m_rope/best.pt`. (The dataset and the larger
+> experiment checkpoints stay gitignored/regenerable.)
+
 ### Reproduce the official submission (the judges' path)
 
 Run the trained model on the organizers' eval inputs to produce the three submission files,
 then score with their `eval_metrics.py`:
 
 ```bash
-python src/process_logic/predict.py --ckpt checkpoints/final_3m_rope/best.pt \
+python src/process_logic/predict.py --ckpt checkpoints/best.pt \
     --out-dir extras/results \
     --nextstep-input   eval_input_valid.csv \
     --completion-input eval_input_valid.csv \
@@ -74,7 +79,7 @@ A Flask backend exposes the model; the frontend visualizes it. Both call the **s
 backend is the real engine, the UI is the demo.
 
 ```bash
-python server/app.py        # serves http://localhost:5050 (set CHECKPOINT_PATH to your .pt)
+python server/app.py        # serves http://localhost:5050 (defaults to checkpoints/best.pt; override with CHECKPOINT_PATH)
 ```
 
 - **Single-sequence:** load a held-out validation example → next-step (top-1/3/5) · complete
@@ -111,7 +116,9 @@ eval/                drop the organizers' eval_metrics.py here at event start
 See **[`REPORT.md`](REPORT.md)** (the jury report), `DECISIONS.md`, and `CLAUDE.md`
 (project context + Leonardo/Slurm runbook).
 
-> **Honesty note:** checkpoints and the dataset are *not* committed (gitignored) — they
-> regenerate deterministically with the commands above. The model trains from scratch and uses
+> **Honesty note:** the final 1.37M deliverable checkpoint **is committed** (`checkpoints/best.pt`,
+> 5.2 MB) so judges can test without retraining; the dataset and the larger experiment checkpoints
+> (25M V1, OOD runs) are *not* committed (gitignored) — they regenerate deterministically with the
+> commands above. The model trains from scratch and uses
 > no external API at inference. Block-level Accuracy shown in the UI is our 5-step-window
 > interpretation; the authoritative number is from the organizers' `eval_metrics.py`.

@@ -3,7 +3,9 @@ data/
 # training artifacts
 *.pt
 *.ckpt
-checkpoints/
+checkpoints/*
+# ...except the final 1.37M deliverable checkpoint (committed so judges can test directly)
+!checkpoints/best.pt
 wandb/
 extras/results/*.csv
 # benchmark run logs (ephemeral, not results)
