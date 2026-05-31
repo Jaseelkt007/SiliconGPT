@@ -51,7 +51,7 @@ RULE_IDS = [
 # Defaults reflect May 2026 docs — verify in each dashboard; override with --model.
 # "no_think" = how to DISABLE reasoning per provider (applied unless --thinking is set).
 PROVIDERS = {
-    "openai":    {"base_url": None, "key": "OPENAI_API_KEY", "model": "gpt-5.5", "kind": "openai",
+    "openai":    {"base_url": None, "key": "OPENAI_API_KEY", "model": "gpt-5", "kind": "openai",
                   "no_think": {"kwargs": {"reasoning_effort": "none"}}},
     "gemini":    {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
                   "key": "GEMINI_API_KEY", "model": "gemini-3.5-flash", "kind": "openai",
@@ -63,6 +63,22 @@ PROVIDERS = {
                   "model": "kimi-k2.6", "kind": "openai",
                   # Kimi K2.6 thinks BY DEFAULT — must disable explicitly.
                   "no_think": {"extra_body": {"thinking": {"type": "disabled"}}}},
+    "featherless": {"base_url": "https://api.featherless.ai/v1", "key": "FEATHERLESS_API_KEY",
+                    "model": "moonshotai/Kimi-K2.6", "kind": "openai",
+                    # Kimi K2.6 via Featherless — disable thinking for instant mode.
+                    "no_think": {"extra_body": {"thinking": {"type": "disabled"}}}},
+    "featherless-qwen": {"base_url": "https://api.featherless.ai/v1", "key": "FEATHERLESS_API_KEY",
+                         "model": "Qwen/Qwen3.6-35B-A3B", "kind": "openai",
+                         # Qwen3 thinking disable — vLLM chat_template_kwargs style.
+                         "no_think": {"extra_body": {"chat_template_kwargs": {"enable_thinking": False}}}},
+    "featherless-llama": {"base_url": "https://api.featherless.ai/v1", "key": "FEATHERLESS_API_KEY",
+                          "model": "meta-llama/Llama-3.3-70B-Instruct", "kind": "openai",
+                          # Llama 3.3 has no thinking mode — no special params needed.
+                          "no_think": {}},
+    "featherless-deepseek": {"base_url": "https://api.featherless.ai/v1", "key": "FEATHERLESS_API_KEY",
+                              "model": "deepseek-ai/DeepSeek-V3-0324", "kind": "openai",
+                              # DeepSeek V3 is not a thinking model — no special params needed.
+                              "no_think": {}},
     "anthropic": {"base_url": None, "key": "ANTHROPIC_API_KEY", "model": "claude-sonnet-4-6",
                   "kind": "anthropic", "no_think": {}},  # extended thinking off by default (omit param)
     "mock":      {"base_url": None, "key": None, "model": "mock", "kind": "mock", "no_think": {}},

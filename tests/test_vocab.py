@@ -7,7 +7,6 @@ from process_logic.vocab import Vocab, SPECIALS  # noqa: E402
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 
-
 def _build():
     # train_pool contains all 3 families, so it covers the full step vocabulary
     return Vocab.build_from_csvs([DATA / "train_pool.csv"])

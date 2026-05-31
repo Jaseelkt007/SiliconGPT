@@ -1,0 +1,4 @@
+flask>=3.0
+flask-cors>=4.0
+torch>=2.2
+numpy>=1.26

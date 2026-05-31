@@ -6,6 +6,13 @@ data/
 checkpoints/
 wandb/
 extras/results/*.csv
+# benchmark run logs (ephemeral, not results)
+extras/results/*.log
+# slurm job output files
+slurm-*.out
+# smoke-test-only baseline dirs (incomplete / gated model — not real benchmarks)
+extras/results/baseline_featherless/
+extras/results/baseline_featherless-llama/
 # python
 __pycache__/
 *.pyc

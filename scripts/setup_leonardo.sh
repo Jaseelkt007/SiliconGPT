@@ -13,8 +13,10 @@ fi
 cd "$(dirname "$0")/.."
 [ -f pixi.toml ] || pixi init .
 
-# 2) core deps (from conda-forge unless --pypi)
-pixi add python=3.12 numpy pyyaml tqdm scikit-learn matplotlib
+# 2) core deps (from conda-forge unless --pypi).  The explicit runtime C++
+# libs are needed because Leonardo compute nodes can expose an older system
+# libstdc++ than the login node.
+pixi add python=3.12 numpy pyyaml tqdm scikit-learn matplotlib libstdcxx-ng libgcc-ng
 
 # 3) PyTorch with CUDA for the A100s. The exact spec may need adjusting for
 #    Leonardo's CUDA — check the HPC onboarding kit (Ch.6) if this fails:
