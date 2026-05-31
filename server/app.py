@@ -194,41 +194,31 @@ def create_app() -> Flask:
         text = f.read().decode("utf-8", errors="replace")
         return list(csv.DictReader(io.StringIO(text)))
 
-    @app.post("/api/eval/nextstep")
-    def eval_nextstep():
-        if (err := _need_model()):
-            return err
-        rows = _read_uploaded_csv()
-        out = []
-        pred_rows = []
+    def _read_server_csv(path: Path) -> list[dict]:
+        with open(path, encoding="utf-8") as fh:
+            return list(csv.DictReader(fh))
+
+    # Per-task processors — shared by the uploaded-CSV routes AND the built-in
+    # validation-set route, so both behave identically.
+    def _proc_nextstep(rows):
+        out, pred_rows = [], []
         for r in rows:
             partial = _split(r.get("PARTIAL_SEQUENCE", ""))
             preds = INF.predict_topk(partial, k=5)
             tokens = [p["token"] for p in preds]
             ex_id = r.get("EXAMPLE_ID", str(len(out)))
-            pred_row = {"EXAMPLE_ID": ex_id,
-                        **{f"RANK_{i+1}": (tokens[i] if i < len(tokens) else "")
-                           for i in range(5)}}
-            pred_rows.append(pred_row)
-            out.append({
-                "example_id": ex_id,
-                "family": r.get("FAMILY", ""),
-                "partial_sequence": partial,
-                "predictions": preds,
-                "true_next_step": r.get("TRUE_NEXT_STEP"),
-            })
-        metrics = None
-        if any("TRUE_NEXT_STEP" in r and r["TRUE_NEXT_STEP"] for r in rows):
-            metrics = score_nextstep(pred_rows, rows)
-        return jsonify({"rows": out, "metrics": metrics, "n": len(out)})
+            pred_rows.append({"EXAMPLE_ID": ex_id,
+                              **{f"RANK_{i+1}": (tokens[i] if i < len(tokens) else "")
+                                 for i in range(5)}})
+            out.append({"example_id": ex_id, "family": r.get("FAMILY", ""),
+                        "partial_sequence": partial, "predictions": preds,
+                        "true_next_step": r.get("TRUE_NEXT_STEP")})
+        metrics = (score_nextstep(pred_rows, rows)
+                   if any(r.get("TRUE_NEXT_STEP") for r in rows) else None)
+        return {"rows": out, "metrics": metrics, "n": len(out)}
 
-    @app.post("/api/eval/completion")
-    def eval_completion():
-        if (err := _need_model()):
-            return err
-        rows = _read_uploaded_csv()
-        out = []
-        pred_rows = []
+    def _proc_completion(rows):
+        out, pred_rows = [], []
         valid = defaultdict(lambda: [0, 0])   # family -> [n_valid, n_total]
         for r in rows:
             partial = _split(r.get("PARTIAL_SEQUENCE", ""))
@@ -236,57 +226,100 @@ def create_app() -> Flask:
             ex_id = r.get("EXAMPLE_ID", str(len(out)))
             pred_rows.append({"EXAMPLE_ID": ex_id, "PREDICTED_SEQUENCE": "|".join(gen)})
             fam = r.get("FAMILY", "")
-            ok = 0 if INF.validate(partial + gen) else 1   # is the full generated recipe rule-valid?
+            ok = 0 if INF.validate(partial + gen) else 1   # full generated recipe rule-valid?
             for key in (fam, "ALL"):
                 valid[key][0] += ok
                 valid[key][1] += 1
-            out.append({
-                "example_id": ex_id,
-                "family": fam,
-                "completion_fraction": r.get("COMPLETION_FRACTION"),
-                "partial_sequence": partial,
-                "predicted": gen,
-                "true_suffix": _split(r.get("TRUE_SUFFIX", "")) if r.get("TRUE_SUFFIX") else None,
-            })
-        metrics = {}
-        if any("TRUE_SUFFIX" in r and r["TRUE_SUFFIX"] for r in rows):
-            metrics = score_completion(pred_rows, rows)
-        # validity needs no ground truth — always attach it per family
-        for key, (v, t) in valid.items():
+            out.append({"example_id": ex_id, "family": fam,
+                        "completion_fraction": r.get("COMPLETION_FRACTION"),
+                        "partial_sequence": partial, "predicted": gen,
+                        "true_suffix": _split(r.get("TRUE_SUFFIX", "")) if r.get("TRUE_SUFFIX") else None})
+        metrics = (score_completion(pred_rows, rows)
+                   if any(r.get("TRUE_SUFFIX") for r in rows) else {})
+        for key, (v, t) in valid.items():        # validity needs no ground truth
             metrics.setdefault(key, {"n": t})
             metrics[key]["validity"] = v / max(1, t)
-        return jsonify({"rows": out, "metrics": metrics or None, "n": len(out)})
+        return {"rows": out, "metrics": metrics or None, "n": len(out)}
+
+    def _proc_anomaly(rows):
+        out, pred_rows = [], []
+        for r in rows:
+            seq = _split(r.get("SEQUENCE", ""))
+            res = INF.anomaly(seq, use_validator=True)
+            ex_id = r.get("EXAMPLE_ID", str(len(out)))
+            pred_rows.append({"EXAMPLE_ID": ex_id, "IS_VALID": res["is_valid"],
+                              "SCORE": res["score"], "PREDICTED_RULE": res["predicted_rule"]})
+            out.append({"example_id": ex_id, "family": r.get("FAMILY", ""), "sequence": seq,
+                        "is_valid": res["is_valid"], "score": res["score"],
+                        "predicted_rule": res["predicted_rule"], "nll": res["nll"],
+                        "true_is_valid": int(r["IS_VALID"]) if r.get("IS_VALID", "") != "" else None,
+                        "true_rule": r.get("RULE_VIOLATED")})
+        metrics = (score_anomaly_metrics(pred_rows, rows)
+                   if any(r.get("IS_VALID", "") != "" for r in rows) else None)
+        return {"rows": out, "metrics": metrics, "n": len(out)}
+
+    _PROC = {"nextstep": _proc_nextstep, "completion": _proc_completion, "anomaly": _proc_anomaly}
+
+    @app.post("/api/eval/nextstep")
+    def eval_nextstep():
+        if (err := _need_model()):
+            return err
+        return jsonify(_proc_nextstep(_read_uploaded_csv()))
+
+    @app.post("/api/eval/completion")
+    def eval_completion():
+        if (err := _need_model()):
+            return err
+        return jsonify(_proc_completion(_read_uploaded_csv()))
 
     @app.post("/api/eval/anomaly")
     def eval_anomaly_route():
         if (err := _need_model()):
             return err
-        rows = _read_uploaded_csv()
-        out = []
-        pred_rows = []
-        for r in rows:
-            seq = _split(r.get("SEQUENCE", ""))
-            res = INF.anomaly(seq, use_validator=True)
-            ex_id = r.get("EXAMPLE_ID", str(len(out)))
-            pred_rows.append({"EXAMPLE_ID": ex_id,
-                              "IS_VALID": res["is_valid"],
-                              "SCORE": res["score"],
-                              "PREDICTED_RULE": res["predicted_rule"]})
-            out.append({
-                "example_id": ex_id,
-                "family": r.get("FAMILY", ""),
-                "sequence": seq,
-                "is_valid": res["is_valid"],
-                "score": res["score"],
-                "predicted_rule": res["predicted_rule"],
-                "nll": res["nll"],
-                "true_is_valid": int(r["IS_VALID"]) if "IS_VALID" in r and r["IS_VALID"] != "" else None,
-                "true_rule": r.get("RULE_VIOLATED"),
-            })
-        metrics = None
-        if any("IS_VALID" in r and r["IS_VALID"] != "" for r in rows):
-            metrics = score_anomaly_metrics(pred_rows, rows)
-        return jsonify({"rows": out, "metrics": metrics, "n": len(out)})
+        return jsonify(_proc_anomaly(_read_uploaded_csv()))
+
+    # ---------- built-in held-out data (no upload needed) ---------- #
+    @app.get("/api/sample")
+    def sample():
+        """A held-out (validation-split) example for a family — so the UI can run
+        real inference with no upload. Source: data/val_id.csv (in-dist, held-out)."""
+        if (err := _need_model()):
+            return err
+        fam = (request.args.get("family") or "mosfet").lower()
+        path = ROOT / "data" / "val_id.csv"
+        if not path.exists():
+            return jsonify({"error": "validation data not found on server"}), 404
+        rows = [r for r in _read_server_csv(path) if r.get("FAMILY", "").lower() == fam]
+        if not rows:
+            return jsonify({"error": f"no held-out examples for family '{fam}'"}), 404
+        i = request.args.get("i")
+        n = (int(i) % len(rows)) if (i and i.isdigit()) else 0
+        r = rows[n]
+        return jsonify({"family": fam, "example_id": r.get("SEQUENCE_ID", f"{fam}-{n}"),
+                        "steps": _split(r.get("SEQUENCE", "")), "index": n,
+                        "n_available": len(rows), "split": "val_id · held-out · in-distribution"})
+
+    @app.post("/api/eval/builtin")
+    def eval_builtin():
+        """Run the server's OWN held-out eval set for a task — judges click one
+        button, no file needed. ?task=nextstep|completion|anomaly  &limit=N (optional)."""
+        if (err := _need_model()):
+            return err
+        task = (request.args.get("task") or request.form.get("task") or "nextstep").lower()
+        if task not in _PROC:
+            return jsonify({"error": f"unknown task '{task}'"}), 400
+        path = ROOT / "data" / f"eval_{task}.csv"
+        if not path.exists():
+            return jsonify({"error": f"no built-in eval set for task '{task}'"}), 404
+        rows = _read_server_csv(path)
+        total = len(rows)
+        lim = request.args.get("limit") or request.form.get("limit")
+        if lim and str(lim).isdigit():
+            rows = rows[: int(lim)]
+        res = _PROC[task](rows)
+        res["builtin"] = {"task": task, "split": "held-out eval set",
+                          "scored": len(rows), "total": total}
+        return jsonify(res)
 
     @app.post("/api/eval/ood")
     def eval_ood():
