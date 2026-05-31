@@ -1,0 +1,115 @@
+{
+  "nextstep": {
+    "models": {
+      "Ours (1.37M)": {
+        "top1": 0.8111,
+        "top3": 0.9964,
+        "top5": 0.9997,
+        "mrr": 0.9032,
+        "n": 3600
+      },
+      "Gemini 3.5-flash": {
+        "top1": 0.555,
+        "top3": 0.735,
+        "top5": 0.78,
+        "mrr": 0.6467,
+        "n": 200
+      },
+      "DeepSeek": {
+        "top1": 0.48,
+        "top3": 0.59,
+        "top5": 0.65,
+        "mrr": 0.5451,
+        "n": 200
+      },
+      "Qwen": {
+        "top1": 0.415,
+        "top3": 0.555,
+        "top5": 0.635,
+        "mrr": 0.4972,
+        "n": 200
+      },
+      "n-gram (trigram)": {
+        "top1": 0.7608,
+        "top3": 0.9906,
+        "top5": 1.0,
+        "mrr": 0.8743,
+        "n": 3600
+      }
+    }
+  },
+  "completion": {
+    "models": {
+      "Ours (1.37M)": {
+        "exact_match": 0.0,
+        "norm_edit_dist": 0.2216,
+        "token_acc": 0.4053,
+        "n": 600
+      },
+      "Gemini 3.5-flash": {
+        "exact_match": 0.0,
+        "norm_edit_dist": 0.6582,
+        "token_acc": 0.0762,
+        "n": 200
+      },
+      "DeepSeek": {
+        "exact_match": 0.0,
+        "norm_edit_dist": 0.7602,
+        "token_acc": 0.0556,
+        "n": 200
+      },
+      "Qwen": {
+        "exact_match": 0.0,
+        "norm_edit_dist": 0.8274,
+        "token_acc": 0.0245,
+        "n": 200
+      },
+      "n-gram (trigram)": {
+        "exact_match": 0.0,
+        "norm_edit_dist": 0.3178,
+        "token_acc": 0.2827,
+        "n": 600
+      }
+    }
+  },
+  "anomaly": {
+    "models": {
+      "Ours (1.37M)": {
+        "acc": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "roc_auc": 1.0,
+        "rule_attr": 0.91,
+        "n": 1000
+      },
+      "Gemini 3.5-flash": {
+        "acc": 0.925,
+        "precision": 0.8837,
+        "recall": 0.9383,
+        "f1": 0.9102,
+        "roc_auc": 0.6757,
+        "rule_attr": 0.8947,
+        "n": 200
+      },
+      "DeepSeek": {
+        "acc": 0.77,
+        "precision": 1.0,
+        "recall": 0.4321,
+        "f1": 0.6034,
+        "roc_auc": 0.7457,
+        "rule_attr": 1.0,
+        "n": 200
+      },
+      "Qwen": {
+        "acc": 0.775,
+        "precision": 0.7812,
+        "recall": 0.6173,
+        "f1": 0.6897,
+        "roc_auc": 0.6731,
+        "rule_attr": 0.76,
+        "n": 200
+      }
+    }
+  }
+}
