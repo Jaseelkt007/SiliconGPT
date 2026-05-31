@@ -10,6 +10,9 @@ extras/results/*.csv
 extras/results/*.log
 # slurm job output files
 slurm-*.out
+*.out
+# scratch/temp
+.cctmp/
 # smoke-test-only baseline dirs (incomplete / gated model — not real benchmarks)
 extras/results/baseline_featherless/
 extras/results/baseline_featherless-llama/
