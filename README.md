@@ -68,6 +68,51 @@ Formats follow the spec exactly (`generation_rules.md §5`): inputs are pipe-sep
 `EXAMPLE_ID,PREDICTED_SEQUENCE`, and `EXAMPLE_ID,IS_VALID,SCORE,PREDICTED_RULE`. Our own held-out
 eval CSVs (`data/eval_*.csv`) are drop-in compatible if the organizer files aren't to hand.
 
+### Quick CPU demo (no GPU, finishes in seconds)
+
+To confirm the whole **predict → score** pipeline works on your machine, run it on a tiny
+subset of the eval inputs. **No GPU required** — it runs on a single CPU.
+
+**One command (recommended):**
+
+```bash
+bash scripts/run_demo.sh
+```
+
+It uses the committed checkpoint (`checkpoints/best.pt`), carves a tiny subset
+(`data/eval_*_demo.csv` — 6 next-step / 5 completion / 6 anomaly examples) from the full eval
+files if it isn't there yet, predicts on it, and scores it. Outputs land in
+**`extras/test_folder/`** (`nextstep.csv`, `completion.csv`, `anomaly.csv`, `score_demo.txt`).
+The script auto-detects the env: it uses **pixi** if present, otherwise the `python` on your
+`PATH` (e.g. after `pip install -r requirements.txt`).
+
+> Needs `data/` to exist — run `python scripts/build_datasets.py` first on a clean checkout
+> (the dataset is gitignored/regenerable). The script tells you if a file is missing.
+
+**Manual (the exact two steps the script runs)** — useful if you want to point at your own
+files or run inside an explicitly activated environment:
+
+```bash
+# activate the env (pick one):
+export PATH="$HOME/.pixi/bin:$PATH"      # our env -> prefix the commands below with `pixi run`
+# or:  pip install -r requirements.txt   # plain venv -> run `python ...` directly
+
+# 1) predict on the tiny subset, on CPU
+pixi run python src/process_logic/predict.py \
+    --ckpt checkpoints/best.pt --device cpu --out-dir extras/test_folder \
+    --nextstep-input   data/eval_nextstep_demo.csv \
+    --completion-input data/eval_completion_demo.csv \
+    --anomaly-input    data/eval_anomaly_demo.csv \
+    --calib-file       data/val_id.csv
+
+# 2) score (--intersect filters the full ground truth down to the subset's IDs)
+pixi run python src/process_logic/score.py \
+    --pred-dir extras/test_folder --gt-dir data --intersect
+```
+
+Swap `--device cpu` for `--device cuda` and the `*_demo.csv` inputs for the full `eval_*.csv`
+(or the organizer files) to run the real thing.
+
 ---
 
 ## Live demo (optional UI)
