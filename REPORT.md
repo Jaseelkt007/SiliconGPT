@@ -7,6 +7,7 @@
 
 **Team name:** bounded · **Repository:** SiliconGPT
 **Track:** Industrial AI (Infineon) — *Learning and Benchmarking Process Logic*
+**Live demo:** https://silicon-oracle-suite.lovable.app/ · **Frontend repo:** https://github.com/Unais2003/silicongpt-intelligence-front
 
 ---
 

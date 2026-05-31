@@ -67,7 +67,10 @@ eval CSVs (`data/eval_*.csv`) are drop-in compatible if the organizer files aren
 
 ## Live demo (optional UI)
 
-A Flask backend exposes the model; a frontend visualizes it. Both call the **same** model — the
+- **Live demo:** https://silicon-oracle-suite.lovable.app/  *(works while the backend tunnel is up)*
+- **Frontend source:** https://github.com/Unais2003/silicongpt-intelligence-front  (React · TanStack Start · MIT)
+
+A Flask backend exposes the model; the frontend visualizes it. Both call the **same** model — the
 backend is the real engine, the UI is the demo.
 
 ```bash
