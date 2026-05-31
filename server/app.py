@@ -229,23 +229,33 @@ def create_app() -> Flask:
         rows = _read_uploaded_csv()
         out = []
         pred_rows = []
+        valid = defaultdict(lambda: [0, 0])   # family -> [n_valid, n_total]
         for r in rows:
             partial = _split(r.get("PARTIAL_SEQUENCE", ""))
             gen = INF.complete(partial, max_new=240, greedy=True)
             ex_id = r.get("EXAMPLE_ID", str(len(out)))
             pred_rows.append({"EXAMPLE_ID": ex_id, "PREDICTED_SEQUENCE": "|".join(gen)})
+            fam = r.get("FAMILY", "")
+            ok = 0 if INF.validate(partial + gen) else 1   # is the full generated recipe rule-valid?
+            for key in (fam, "ALL"):
+                valid[key][0] += ok
+                valid[key][1] += 1
             out.append({
                 "example_id": ex_id,
-                "family": r.get("FAMILY", ""),
+                "family": fam,
                 "completion_fraction": r.get("COMPLETION_FRACTION"),
                 "partial_sequence": partial,
                 "predicted": gen,
                 "true_suffix": _split(r.get("TRUE_SUFFIX", "")) if r.get("TRUE_SUFFIX") else None,
             })
-        metrics = None
+        metrics = {}
         if any("TRUE_SUFFIX" in r and r["TRUE_SUFFIX"] for r in rows):
             metrics = score_completion(pred_rows, rows)
-        return jsonify({"rows": out, "metrics": metrics, "n": len(out)})
+        # validity needs no ground truth — always attach it per family
+        for key, (v, t) in valid.items():
+            metrics.setdefault(key, {"n": t})
+            metrics[key]["validity"] = v / max(1, t)
+        return jsonify({"rows": out, "metrics": metrics or None, "n": len(out)})
 
     @app.post("/api/eval/anomaly")
     def eval_anomaly_route():

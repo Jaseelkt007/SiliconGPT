@@ -87,9 +87,26 @@ def score_nextstep(pred_rows, gt_rows):
 
 
 # ---------- Task 2: completion ----------
+def block_accuracy(pred, true, block=5):
+    """Block-level accuracy: split the true suffix into consecutive `block`-step
+    windows; a block scores 1 only if the prediction reproduces that window exactly
+    (position-aligned). Returns the fraction of correct blocks. (Our interpretation
+    of the organizers' Block-level Accuracy; window=5.)"""
+    if not true:
+        return 1.0 if not pred else 0.0
+    nb = (len(true) + block - 1) // block
+    correct = 0
+    for b in range(nb):
+        s, e = b * block, min((b + 1) * block, len(true))
+        pblk = pred[s:e] if s < len(pred) else []
+        if pblk == true[s:e]:
+            correct += 1
+    return correct / nb
+
+
 def score_completion(pred_rows, gt_rows):
     P = index_by_id(pred_rows)
-    fam = defaultdict(lambda: dict(em=0, ned=0.0, tok=0.0, n=0))
+    fam = defaultdict(lambda: dict(em=0, ned=0.0, tok=0.0, blk=0.0, n=0))
     for g in gt_rows:
         ex = g["EXAMPLE_ID"]
         true = g["TRUE_SUFFIX"].split("|") if g["TRUE_SUFFIX"] else []
@@ -100,17 +117,19 @@ def score_completion(pred_rows, gt_rows):
         ned = dist / max(1, max(len(pred), len(true)))
         match = sum(1 for i in range(min(len(pred), len(true))) if pred[i] == true[i])
         tok = match / max(1, len(true))
+        blk = block_accuracy(pred, true)
         for key in (g["FAMILY"], "ALL"):
             d = fam[key]
             d["n"] += 1
             d["em"] += d_em
             d["ned"] += ned
             d["tok"] += tok
+            d["blk"] += blk
     out = {}
     for k, d in fam.items():
         n = max(1, d["n"])
         out[k] = {"exact_match": d["em"] / n, "norm_edit_dist": d["ned"] / n,
-                  "token_acc": d["tok"] / n, "n": d["n"]}
+                  "token_acc": d["tok"] / n, "block_acc": d["blk"] / n, "n": d["n"]}
     return out
 
 
