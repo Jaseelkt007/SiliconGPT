@@ -1,12 +1,16 @@
-# Core
+# Core — training + inference (CPU or GPU)
 torch>=2.2
 numpy>=1.26
 pyyaml>=6.0
 tqdm>=4.66
 
-# Metrics & plots
+# Demo backend — the Flask inference API the frontend / live tests call
+flask>=3.0
+flask-cors>=4.0
+
+# Metrics & plots (the scorer itself is pure stdlib; these power optional plots/utilities)
 scikit-learn>=1.4
 matplotlib>=3.8
 
-# Experiment tracking (optional)
+# Experiment tracking (optional — training logs to extras/results/train_log.csv without it)
 wandb>=0.16
