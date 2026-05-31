@@ -1,14 +1,11 @@
-# SiliconGPT — Industrial AI (Infineon)
-
-> **TODO before submission:** fill in the real team name + member names/roles below
-> (placeholders pre-filled from the repo owners).
+# bounded — Industrial AI (Infineon)
 
 ## Team
 
-- **Jaseel K T** — model, training, evaluation, backend
-- **Unais** — frontend, demo
-- *(add any other members + roles)*
+- **Mohammed Jaseel Kunnathodika** — AI / ML (model, training, inference)
+- **Muhammed Unais Perinchikkal** — Full-stack (backend & frontend)
 
+**Team name:** bounded · **Repository:** SiliconGPT
 **Track:** Industrial AI (Infineon) — *Learning and Benchmarking Process Logic*
 
 ---
@@ -167,4 +164,4 @@ alongside the LM-only number.
 
 ---
 
-*Submitted by team SiliconGPT for Zero One Hack_01, 2026-05-31.*
+*Submitted by team **bounded** (project: SiliconGPT) for Zero One Hack_01, 2026-05-31.*
