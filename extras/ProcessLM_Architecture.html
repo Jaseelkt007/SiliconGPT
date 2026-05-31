@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProcessLM · Architecture</title>
+<style>
+/* ─── Reset & Base ─────────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080f;
+  --surface:#0d0f1a;
+  --card:#131627;
+  --border:#1e2236;
+  --border2:#2a3050;
+  --cyan:#00d4ff;
+  --cyan2:#00a8cc;
+  --green:#00ff88;
+  --orange:#ff9a00;
+  --purple:#c084fc;
+  --pink:#f472b6;
+  --red:#ff4d6d;
+  --yellow:#fde047;
+  --text:#e2e8f0;
+  --muted:#64748b;
+  --muted2:#94a3b8;
+  --mono:'JetBrains Mono','Fira Mono','Courier New',monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden;line-height:1.5}
+
+/* ─── Hero ──────────────────────────────────────────────────────────────── */
+.hero{
+  text-align:center;padding:72px 24px 48px;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,212,255,.07) 0%,transparent 70%);
+  border-bottom:1px solid var(--border);
+  position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(0,212,255,.03) 40px),
+             repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(0,212,255,.03) 40px);
+  pointer-events:none;
+}
+.hero-tag{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--cyan);text-transform:uppercase;margin-bottom:12px}
+.hero-title{font-size:clamp(32px,6vw,64px);font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-bottom:8px}
+.hero-title span{color:var(--cyan)}
+.hero-sub{font-family:var(--mono);font-size:14px;color:var(--muted2);margin-bottom:32px}
+.stats-row{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:16px}
+.stat-chip{
+  background:var(--card);border:1px solid var(--border2);border-radius:6px;
+  padding:8px 16px;font-family:var(--mono);font-size:12px;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.stat-chip .val{font-size:20px;font-weight:700;color:var(--cyan)}
+.stat-chip .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.hero-note{font-size:12px;color:var(--muted);font-family:var(--mono)}
+
+/* ─── Layout ─────────────────────────────────────────────────────────────── */
+.page{display:grid;grid-template-columns:1fr 380px;gap:0;min-height:100vh;align-items:start}
+@media(max-width:1100px){.page{grid-template-columns:1fr}}
+.arch-col{padding:40px 32px;border-right:1px solid var(--border)}
+.detail-col{padding:40px 24px;position:sticky;top:0;max-height:100vh;overflow-y:auto}
+
+/* ─── Section label ──────────────────────────────────────────────────────── */
+.sec-label{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+
+/* ─── Input tokens ───────────────────────────────────────────────────────── */
+.input-area{margin-bottom:28px}
+.token-strip{
+  display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;padding:12px;
+  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  scrollbar-width:thin;scrollbar-color:var(--border2) transparent;
+}
+.tok{
+  flex-shrink:0;font-family:var(--mono);font-size:11px;padding:4px 8px;
+  border-radius:4px;border:1px solid;white-space:nowrap;
+  animation:tokIn .4s ease both;
+}
+.tok.active{background:rgba(0,212,255,.15);border-color:var(--cyan);color:var(--cyan)}
+.tok.past{background:rgba(100,116,139,.1);border-color:var(--border2);color:var(--muted2)}
+.tok.future{background:rgba(255,154,0,.08);border-color:rgba(255,154,0,.3);color:rgba(255,154,0,.6)}
+@keyframes tokIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ─── Connector lines ────────────────────────────────────────────────────── */
+.connector{
+  display:flex;flex-direction:column;align-items:center;
+  position:relative;height:36px;
+}
+.connector::before{
+  content:'';position:absolute;left:50%;top:0;bottom:0;width:2px;
+  background:linear-gradient(180deg,var(--border2),var(--border2));
+  transform:translateX(-50%);
+}
+.connector.flow::before{
+  background:linear-gradient(180deg,var(--cyan),var(--cyan2));
+}
+.conn-label{
+  font-family:var(--mono);font-size:10px;color:var(--muted);
+  background:var(--bg);padding:0 6px;position:relative;z-index:1;
+  border:1px solid var(--border);border-radius:3px;margin:auto;
+  white-space:nowrap;
+}
+.particle{
+  position:absolute;left:50%;width:8px;height:8px;border-radius:50%;
+  background:var(--cyan);box-shadow:0 0 10px var(--cyan);
+  transform:translateX(-50%);
+  animation:fall 1.4s ease-in-out infinite;
+}
+@keyframes fall{
+  0%{top:0;opacity:1}
+  80%{opacity:1}
+  100%{top:100%;opacity:0}
+}
+
+/* ─── Architecture blocks ────────────────────────────────────────────────── */
+.arch-block{
+  border-radius:10px;border:1px solid var(--border2);
+  background:var(--card);padding:14px 18px;
+  cursor:pointer;transition:all .25s ease;
+  position:relative;overflow:hidden;
+}
+.arch-block::before{
+  content:'';position:absolute;inset:0;opacity:0;
+  transition:opacity .25s;pointer-events:none;
+}
+.arch-block:hover{border-color:var(--cyan);transform:translateX(2px)}
+.arch-block:hover::before{opacity:1}
+.arch-block.active-block{
+  border-color:var(--cyan);
+  box-shadow:0 0 0 1px var(--cyan),0 0 24px rgba(0,212,255,.2);
+}
+
+.block-tag{font-family:var(--mono);font-size:9px;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+.block-name{font-weight:600;font-size:15px;margin-bottom:4px}
+.block-formula{font-family:var(--mono);font-size:12px;color:var(--cyan2);margin-bottom:4px}
+.block-dims{font-family:var(--mono);font-size:11px;color:var(--muted2)}
+.block-params{
+  position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right;
+}
+
+/* colour accents per block type */
+.blk-embed .block-name{color:var(--yellow)}
+.blk-embed{border-left:3px solid var(--yellow)}
+.blk-norm .block-name{color:var(--green)}
+.blk-norm{border-left:3px solid var(--green)}
+.blk-attn .block-name{color:var(--orange)}
+.blk-attn{border-left:3px solid var(--orange)}
+.blk-mlp .block-name{color:var(--purple)}
+.blk-mlp{border-left:3px solid var(--purple)}
+.blk-residual{border-left:3px solid var(--border2);background:transparent;border-color:var(--border)}
+.blk-residual .block-name{color:var(--muted2);font-size:13px}
+.blk-head .block-name{color:var(--pink)}
+.blk-head{border-left:3px solid var(--pink)}
+.blk-softmax .block-name{color:var(--green)}
+.blk-softmax{border-left:3px solid var(--green);background:var(--surface)}
+.blk-tok .block-name{color:var(--cyan)}
+.blk-tok{border-left:3px solid var(--cyan)}
+
+/* ─── Repeat bracket ─────────────────────────────────────────────────────── */
+.repeat-wrap{position:relative;padding-left:28px;margin:4px 0}
+.repeat-bracket{
+  position:absolute;left:0;top:0;bottom:0;width:20px;
+  border:2px solid var(--border2);border-right:none;border-radius:6px 0 0 6px;
+}
+.repeat-label-badge{
+  position:absolute;left:-1px;top:50%;transform:translateY(-50%);
+  background:var(--border2);border-radius:0 4px 4px 0;
+  font-family:var(--mono);font-size:10px;color:var(--text);padding:2px 6px;
+  white-space:nowrap;writing-mode:vertical-lr;text-orientation:mixed;
+  letter-spacing:.05em;
+}
+.repeat-inner{display:flex;flex-direction:column;gap:6px}
+
+/* ─── RoPE diagram inside attn ───────────────────────────────────────────── */
+.qkv-row{display:flex;gap:6px;margin:8px 0 4px}
+.q-box,.k-box,.v-box{
+  flex:1;padding:5px 8px;border-radius:5px;font-family:var(--mono);font-size:10px;
+  text-align:center;border:1px solid;
+}
+.q-box{background:rgba(255,154,0,.1);border-color:rgba(255,154,0,.3);color:var(--orange)}
+.k-box{background:rgba(255,154,0,.1);border-color:rgba(255,154,0,.3);color:var(--orange)}
+.v-box{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.3);color:#818cf8}
+.rope-badge{
+  display:inline-block;font-family:var(--mono);font-size:9px;
+  background:rgba(253,224,71,.1);border:1px solid rgba(253,224,71,.3);
+  color:var(--yellow);border-radius:3px;padding:1px 5px;margin-left:4px;
+}
+.sdpa-box{
+  background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);
+  border-radius:5px;padding:6px 10px;font-family:var(--mono);font-size:10px;
+  color:var(--cyan2);text-align:center;margin:4px 0;
+}
+.tied-badge{
+  display:inline-block;font-size:9px;font-family:var(--mono);
+  background:rgba(244,114,182,.15);border:1px solid rgba(244,114,182,.3);
+  color:var(--pink);border-radius:3px;padding:1px 6px;margin-left:6px;
+}
+
+/* ─── SwiGLU diagram ─────────────────────────────────────────────────────── */
+.swiglu-diagram{
+  margin:10px 0 4px;display:grid;grid-template-columns:1fr auto 1fr auto 1fr;
+  align-items:center;gap:4px;font-family:var(--mono);font-size:10px;
+}
+.swiglu-box{
+  padding:5px;border-radius:5px;text-align:center;border:1px solid;
+}
+.w1-box{background:rgba(192,132,252,.1);border-color:rgba(192,132,252,.3);color:var(--purple)}
+.w3-box{background:rgba(192,132,252,.1);border-color:rgba(192,132,252,.3);color:var(--purple)}
+.w2-box{background:rgba(0,255,136,.1);border-color:rgba(0,255,136,.3);color:var(--green)}
+.silu-box{background:rgba(253,224,71,.1);border-color:rgba(253,224,71,.3);color:var(--yellow);padding:5px;border-radius:5px;text-align:center;border:1px solid}
+.mul-sym{color:var(--muted2);font-size:14px;text-align:center}
+.arrow-sym{color:var(--muted);text-align:center}
+
+/* ─── Output predictions ─────────────────────────────────────────────────── */
+.output-area{margin-top:8px}
+.pred-row{
+  display:flex;align-items:center;gap:10px;padding:8px 12px;
+  border-radius:6px;margin-bottom:6px;border:1px solid var(--border);
+  background:var(--surface);
+}
+.pred-rank{font-family:var(--mono);font-size:10px;color:var(--muted);width:16px}
+.pred-token{font-family:var(--mono);font-size:12px;flex:1}
+.pred-bar-wrap{width:120px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.pred-bar{height:100%;border-radius:2px;transition:width 1s ease}
+.pred-prob{font-family:var(--mono);font-size:11px;color:var(--muted2);width:36px;text-align:right}
+.pred-row:nth-child(1) .pred-token{color:var(--green)}
+.pred-row:nth-child(1) .pred-bar{background:var(--green)}
+.pred-row:nth-child(2) .pred-bar{background:var(--cyan)}
+.pred-row:nth-child(3) .pred-bar{background:var(--purple)}
+.pred-row:nth-child(4) .pred-bar{background:var(--orange)}
+.pred-row:nth-child(5) .pred-bar{background:var(--muted)}
+
+/* ─── Detail panel ───────────────────────────────────────────────────────── */
+.detail-panel{background:var(--surface);border-radius:12px;border:1px solid var(--border2);padding:24px;min-height:200px}
+.detail-panel h3{font-size:14px;font-weight:600;margin-bottom:16px;color:var(--cyan)}
+.detail-section{margin-bottom:20px}
+.detail-section h4{font-family:var(--mono);font-size:10px;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+.kv-row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.kv-key{color:var(--muted2);font-family:var(--mono)}
+.kv-val{color:var(--text);font-family:var(--mono);font-weight:600}
+.kv-val.cyan{color:var(--cyan)}
+.kv-val.green{color:var(--green)}
+.kv-val.orange{color:var(--orange)}
+.kv-val.purple{color:var(--purple)}
+.kv-val.yellow{color:var(--yellow)}
+.formula-box{
+  background:var(--card);border:1px solid var(--border2);border-radius:6px;
+  padding:12px;font-family:var(--mono);font-size:11px;color:var(--cyan2);
+  line-height:1.8;margin-top:8px;
+}
+.nav-hint{font-size:11px;color:var(--muted);text-align:center;margin-top:16px;font-family:var(--mono)}
+
+/* ─── Param bar ──────────────────────────────────────────────────────────── */
+.param-breakdown{margin-top:16px}
+.param-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.param-label{font-family:var(--mono);font-size:10px;color:var(--muted2);width:110px;flex-shrink:0}
+.param-bar-wrap{flex:1;height:10px;background:var(--border);border-radius:3px;overflow:hidden}
+.param-bar{height:100%;border-radius:3px}
+.param-num{font-family:var(--mono);font-size:10px;color:var(--muted);width:52px;text-align:right}
+
+/* ─── Walk button ────────────────────────────────────────────────────────── */
+.walkthrough-bar{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  display:flex;gap:8px;background:var(--card);border:1px solid var(--border2);
+  border-radius:12px;padding:8px 16px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:100;
+}
+.walk-btn{
+  background:var(--cyan);color:#000;border:none;border-radius:6px;
+  font-family:var(--mono);font-size:11px;font-weight:700;padding:6px 14px;
+  cursor:pointer;letter-spacing:.05em;transition:all .2s;
+}
+.walk-btn:hover{background:var(--cyan2)}
+.walk-btn.sec{background:transparent;color:var(--muted2);border:1px solid var(--border2)}
+.walk-btn.sec:hover{color:var(--text)}
+.walk-step-info{font-family:var(--mono);font-size:10px;color:var(--muted);align-self:center}
+
+/* ─── Animations ─────────────────────────────────────────────────────────── */
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,212,255,.4)}50%{box-shadow:0 0 0 8px rgba(0,212,255,0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+.slideIn{animation:slideIn .35s ease both}
+@keyframes glow{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* ─── RoPE visualizer ────────────────────────────────────────────────────── */
+.rope-vis{margin:10px 0}
+.rope-freq-row{display:flex;gap:3px;margin-bottom:4px}
+.rope-freq-cell{
+  flex:1;height:20px;border-radius:3px;
+  animation:glow 2s ease-in-out infinite;
+}
+.rope-legend{font-family:var(--mono);font-size:9px;color:var(--muted);display:flex;justify-content:space-between}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HERO ═══════════════════ -->
+<div class="hero">
+  <div class="hero-tag">Zero One Hack_01 · Infineon Industrial AI</div>
+  <h1 class="hero-title">Process<span>LM</span></h1>
+  <div class="hero-sub">Decoder-only Causal Transformer · Trained from scratch on semiconductor fab recipes</div>
+  <div class="stats-row">
+    <div class="stat-chip"><span class="val">25.31M</span><span class="lbl">Parameters</span></div>
+    <div class="stat-chip"><span class="val">8</span><span class="lbl">Layers</span></div>
+    <div class="stat-chip"><span class="val">512</span><span class="lbl">d_model</span></div>
+    <div class="stat-chip"><span class="val">8</span><span class="lbl">Heads</span></div>
+    <div class="stat-chip"><span class="val">64</span><span class="lbl">head_dim</span></div>
+    <div class="stat-chip"><span class="val">202</span><span class="lbl">Vocab</span></div>
+    <div class="stat-chip"><span class="val">256</span><span class="lbl">Context</span></div>
+    <div class="stat-chip"><span class="val">1368</span><span class="lbl">MLP hidden</span></div>
+  </div>
+  <div class="hero-note">Best checkpoint · iter 17,000 · val_loss 0.3090 · A100 64GB · bf16</div>
+</div>
+
+<!-- ═══════════════════ MAIN ═══════════════════ -->
+<div class="page">
+
+<!-- ─── LEFT: ARCHITECTURE COLUMN ─────────────────────────────────── -->
+<div class="arch-col">
+
+  <!-- INPUT TOKENS -->
+  <div class="input-area">
+    <div class="sec-label">Input — Manufacturing Process Sequence</div>
+    <div class="token-strip" id="token-strip">
+      <span class="tok past">RECEIVE WAFER LOT</span>
+      <span class="tok past">PRE CLEAN WAFER</span>
+      <span class="tok past">RCA CLEAN 1</span>
+      <span class="tok past">RCA CLEAN 2</span>
+      <span class="tok past">HF DIP</span>
+      <span class="tok past">THERMAL OXIDATION</span>
+      <span class="tok active">DEPOSIT POLYSILICON</span>
+      <span class="tok future">POLYSILICON ANNEAL</span>
+      <span class="tok future">ALIGN MASK LEVEL 2</span>
+      <span class="tok future">EXPOSE LITHO LEVEL 2</span>
+      <span class="tok future">···</span>
+    </div>
+  </div>
+
+  <!-- TOKENIZER -->
+  <div class="arch-block blk-tok" id="blk-tokenizer" onclick="show('tokenizer')">
+    <div class="block-tag">Step 1</div>
+    <div class="block-name">Tokenizer</div>
+    <div class="block-formula">"DEPOSIT POLYSILICON" → ID 47</div>
+    <div class="block-dims">Vocab: 202 tokens &nbsp;|&nbsp; [PAD=0, BOS=1, EOS=2, UNK=3] + 198 step strings</div>
+    <div class="block-params">No params</div>
+  </div>
+
+  <div class="connector flow">
+    <div class="particle" style="animation-delay:0s"></div>
+    <div class="conn-label">integer IDs &nbsp;[B, T]</div>
+  </div>
+
+  <!-- EMBEDDING -->
+  <div class="arch-block blk-embed" id="blk-embed" onclick="show('embed')">
+    <div class="block-tag">Step 2</div>
+    <div class="block-name">Token Embedding&nbsp;<span class="tied-badge">★ weight-tied</span></div>
+    <div class="block-formula">E ∈ ℝ^{202 × 512} &nbsp;·&nbsp; lookup(ID) → 512-dim vector</div>
+    <div class="block-dims">103,424 params &nbsp;|&nbsp; Shared with LM Head (no extra head params)</div>
+    <div class="block-params">103,424</div>
+  </div>
+
+  <div class="connector flow">
+    <div class="particle" style="animation-delay:.2s"></div>
+    <div class="conn-label">float [B, T, 512] + Dropout 0.1</div>
+  </div>
+
+  <!-- ×8 DECODER BLOCKS -->
+  <div class="repeat-wrap">
+    <div class="repeat-bracket"></div>
+    <div class="repeat-label-badge">× 8 Blocks</div>
+    <div class="repeat-inner">
+
+      <!-- RMNSNORM 1 -->
+      <div class="arch-block blk-norm" id="blk-norm1" onclick="show('rms')">
+        <div class="block-tag">Step 3a &nbsp;·&nbsp; Pre-Attention Norm</div>
+        <div class="block-name">RMSNorm</div>
+        <div class="block-formula">x̂ = x / RMS(x) &nbsp;·&nbsp; γ &nbsp;|&nbsp; RMS(x) = √( mean(x²) + ε )</div>
+        <div class="block-dims">ε = 1e-6 &nbsp;|&nbsp; 512 learnable scale params γ &nbsp;|&nbsp; No mean subtraction (not LayerNorm)</div>
+        <div class="block-params">512</div>
+      </div>
+
+      <div class="connector"><div class="conn-label">[B, T, 512] normalized</div></div>
+
+      <!-- ATTENTION -->
+      <div class="arch-block blk-attn" id="blk-attn" onclick="show('attn')">
+        <div class="block-tag">Step 3b &nbsp;·&nbsp; Causal Self-Attention</div>
+        <div class="block-name">Multi-Head Attention + RoPE</div>
+        <!-- QKV row -->
+        <div class="qkv-row">
+          <div class="q-box">Q &nbsp;512→512<br><span style="color:var(--muted);font-size:9px">8 heads × 64</span><br><span class="rope-badge">+ RoPE</span></div>
+          <div class="k-box">K &nbsp;512→512<br><span style="color:var(--muted);font-size:9px">8 heads × 64</span><br><span class="rope-badge">+ RoPE</span></div>
+          <div class="v-box">V &nbsp;512→512<br><span style="color:var(--muted);font-size:9px">8 heads × 64</span></div>
+        </div>
+        <div class="sdpa-box">
+          scaled_dot_product_attention(Q, K, V, is_causal=True)
+          &nbsp;·&nbsp; Flash Attention on GPU
+          <br><span style="font-size:9px;color:var(--muted)">score(i,j) = QᵢKⱼᵀ / √64 &nbsp;—&nbsp; masked: positions j &gt; i set to −∞</span>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted2);margin-top:6px">
+          Output proj: 512→512 (no bias) &nbsp;|&nbsp; Dropout 0.1
+        </div>
+        <div class="block-params">1,048,576</div>
+      </div>
+
+      <!-- RESIDUAL 1 -->
+      <div class="arch-block blk-residual" style="padding:8px 18px">
+        <div class="block-name">+ Residual Connection</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">x = x_pre_norm + attn_output &nbsp;·&nbsp; [B, T, 512]</div>
+      </div>
+
+      <div class="connector"><div class="conn-label">[B, T, 512]</div></div>
+
+      <!-- RMNSNORM 2 -->
+      <div class="arch-block blk-norm" id="blk-norm2" onclick="show('rms')">
+        <div class="block-tag">Step 3c &nbsp;·&nbsp; Pre-MLP Norm</div>
+        <div class="block-name">RMSNorm</div>
+        <div class="block-formula">Same as above · separate learned γ</div>
+        <div class="block-dims">512 learnable scale params</div>
+        <div class="block-params">512</div>
+      </div>
+
+      <div class="connector"><div class="conn-label">[B, T, 512] normalized</div></div>
+
+      <!-- SWIGLU MLP -->
+      <div class="arch-block blk-mlp" id="blk-mlp" onclick="show('mlp')">
+        <div class="block-tag">Step 3d &nbsp;·&nbsp; Feed-Forward Network</div>
+        <div class="block-name">SwiGLU MLP</div>
+        <!-- SwiGLU diagram -->
+        <div class="swiglu-diagram">
+          <div class="swiglu-box w1-box">w1<br>512→1368<br><span style="font-size:9px">gate</span></div>
+          <div class="silu-box">SiLU<br>σ</div>
+          <div class="swiglu-box w3-box" style="align-self:end">w3<br>512→1368<br><span style="font-size:9px">up</span></div>
+          <div class="mul-sym">⊗</div>
+          <div class="swiglu-box w2-box">w2<br>1368→512<br><span style="font-size:9px">down</span></div>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted2);margin-top:6px;text-align:center">
+          output = w2( SiLU(w1(x)) ⊗ w3(x) ) &nbsp;·&nbsp; Dropout 0.1
+        </div>
+        <div class="block-params">2,088,960</div>
+      </div>
+
+      <!-- RESIDUAL 2 -->
+      <div class="arch-block blk-residual" style="padding:8px 18px">
+        <div class="block-name">+ Residual Connection</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">x = x_pre_norm + mlp_output &nbsp;·&nbsp; [B, T, 512]</div>
+      </div>
+
+    </div><!-- repeat-inner -->
+  </div><!-- repeat-wrap -->
+
+  <div class="connector flow">
+    <div class="particle" style="animation-delay:.4s"></div>
+    <div class="conn-label">[B, T, 512] after 8 blocks</div>
+  </div>
+
+  <!-- FINAL NORM -->
+  <div class="arch-block blk-norm" id="blk-fnorm" onclick="show('rms')">
+    <div class="block-tag">Step 4 &nbsp;·&nbsp; Final Normalization</div>
+    <div class="block-name">RMSNorm</div>
+    <div class="block-formula">Same as per-block norms · applied once after all 8 blocks</div>
+    <div class="block-dims">512 learnable scale params</div>
+    <div class="block-params">512</div>
+  </div>
+
+  <div class="connector flow">
+    <div class="particle" style="animation-delay:.6s"></div>
+    <div class="conn-label">[B, T, 512]</div>
+  </div>
+
+  <!-- LM HEAD -->
+  <div class="arch-block blk-head" id="blk-head" onclick="show('head')">
+    <div class="block-tag">Step 5 &nbsp;·&nbsp; Output Projection</div>
+    <div class="block-name">LM Head&nbsp;<span class="tied-badge">★ weight-tied</span></div>
+    <div class="block-formula">logits = x · Eᵀ &nbsp;·&nbsp; E ∈ ℝ^{202 × 512} (same matrix as embedding)</div>
+    <div class="block-dims">0 additional params &nbsp;|&nbsp; Output shape: [B, T, 202]</div>
+    <div class="block-params">0 (shared)</div>
+  </div>
+
+  <div class="connector flow">
+    <div class="particle" style="animation-delay:.8s"></div>
+    <div class="conn-label">logits [B, T, 202]</div>
+  </div>
+
+  <!-- SOFTMAX + OUTPUT -->
+  <div class="arch-block blk-softmax" id="blk-out" onclick="show('out')">
+    <div class="block-tag">Step 6 &nbsp;·&nbsp; Next-Step Prediction</div>
+    <div class="block-name">Softmax → Top-K Ranking</div>
+    <div class="block-formula">p = softmax(logits[−1]) &nbsp;·&nbsp; specials masked to −∞</div>
+    <div class="block-dims">One position predicts the next token &nbsp;|&nbsp; Top-5 returned with probabilities</div>
+  </div>
+
+  <!-- PREDICTIONS -->
+  <div class="output-area">
+    <div class="sec-label" style="margin-top:12px">Predicted Next Steps</div>
+    <div id="pred-rows">
+      <div class="pred-row"><span class="pred-rank">#1</span><span class="pred-token">POLYSILICON ANNEAL</span><div class="pred-bar-wrap"><div class="pred-bar" style="width:82%;"></div></div><span class="pred-prob">0.821</span></div>
+      <div class="pred-row"><span class="pred-rank">#2</span><span class="pred-token">DEPOSIT SPACER DIELECTRIC</span><div class="pred-bar-wrap"><div class="pred-bar" style="width:9%;"></div></div><span class="pred-prob">0.091</span></div>
+      <div class="pred-row"><span class="pred-rank">#3</span><span class="pred-token">ANNEAL POLYSILICON</span><div class="pred-bar-wrap"><div class="pred-bar" style="width:5%;"></div></div><span class="pred-prob">0.048</span></div>
+      <div class="pred-row"><span class="pred-rank">#4</span><span class="pred-token">MEASURE POLY THICKNESS</span><div class="pred-bar-wrap"><div class="pred-bar" style="width:3%;"></div></div><span class="pred-prob">0.026</span></div>
+      <div class="pred-row"><span class="pred-rank">#5</span><span class="pred-token">POLYSILICON ETCH</span><div class="pred-bar-wrap"><div class="pred-bar" style="width:1%;"></div></div><span class="pred-prob">0.014</span></div>
+    </div>
+  </div>
+
+</div><!-- arch-col -->
+
+<!-- ─── RIGHT: DETAIL PANEL ──────────────────────────────────────────── -->
+<div class="detail-col">
+<div class="detail-panel" id="detail-panel">
+  <div id="detail-content">
+    <h3>Click any block to inspect it</h3>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px;font-family:var(--mono)">
+      Each component of ProcessLM is documented with exact parameters, formulas, and design rationale.
+    </p>
+    <div style="margin-top:20px">
+      <div class="sec-label">Parameter Breakdown (25.31M total)</div>
+      <div class="param-breakdown">
+        <div class="param-row">
+          <div class="param-label">SwiGLU × 8</div>
+          <div class="param-bar-wrap"><div class="param-bar" style="width:66.1%;background:var(--purple)"></div></div>
+          <div class="param-num">16.71M</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Attention × 8</div>
+          <div class="param-bar-wrap"><div class="param-bar" style="width:33.2%;background:var(--orange)"></div></div>
+          <div class="param-num">8.39M</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">Embedding</div>
+          <div class="param-bar-wrap"><div class="param-bar" style="width:0.4%;background:var(--yellow)"></div></div>
+          <div class="param-num">103K</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">RMSNorms × 17</div>
+          <div class="param-bar-wrap"><div class="param-bar" style="width:0.03%;background:var(--green)"></div></div>
+          <div class="param-num">8.7K</div>
+        </div>
+        <div class="param-row">
+          <div class="param-label">LM Head</div>
+          <div class="param-bar-wrap"><div class="param-bar" style="width:0%;background:var(--pink)"></div></div>
+          <div class="param-num">0 (tied)</div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-hint" style="margin-top:24px">← Click blocks in the diagram</div>
+  </div>
+</div>
+</div>
+
+</div><!-- page -->
+
+<!-- ─── WALKTHROUGH BAR ─────────────────────────────────────────────── -->
+<div class="walkthrough-bar">
+  <button class="walk-btn sec" onclick="walkPrev()">← Prev</button>
+  <span class="walk-step-info" id="walk-info">Walk through the architecture</span>
+  <button class="walk-btn" onclick="walkNext()">Next →</button>
+  <button class="walk-btn sec" onclick="autoWalk()" id="auto-btn">▶ Auto</button>
+</div>
+
+<!-- ═══════════════════ DETAIL DATA & JS ═══════════════════ -->
+<script>
+const DETAILS = {
+  tokenizer: {
+    title: "Tokenizer — Step Strings to Integer IDs",
+    color: "var(--cyan)",
+    sections: [
+      { title: "Overview", rows: [
+        ["Type","Custom vocabulary (no BPE)"],
+        ["Vocab size","202 tokens","cyan"],
+        ["Special tokens","PAD=0  BOS=1  EOS=2  UNK=3","orange"],
+        ["Step tokens","198 manufacturing step strings","green"],
+        ["Encoding","[BOS] + step_ids + [EOS]","cyan"],
+        ["Unknown steps","Mapped to UNK (ID=3)"],
+      ]},
+      { title: "Design Rationale", html:`
+        <div class="formula-box">
+          One process step = ONE token<br><br>
+          No BPE — BPE would shatter step strings<br>
+          like "DEPOSIT POLYSILICON" into<br>
+          meaningless subword pieces.<br><br>
+          Steps are the semantic atoms of<br>
+          semiconductor process logic.
+        </div>
+      `},
+    ]
+  },
+  embed: {
+    title: "Token Embedding — ID to Vector",
+    color: "var(--yellow)",
+    sections: [
+      { title: "Specification", rows: [
+        ["Matrix shape","202 × 512 = 103,424 params","yellow"],
+        ["Input","Integer ID ∈ [0, 201]"],
+        ["Output","512-dim float32 vector","yellow"],
+        ["Weight-tied","YES — shared with LM Head ★","green"],
+        ["Init","Normal(μ=0, σ=0.02)"],
+        ["Post-embedding","Dropout p=0.1 during training"],
+      ]},
+      { title: "Weight Tying", html:`
+        <div class="formula-box">
+          head.weight = tok.weight<br><br>
+          The output head reuses the exact<br>
+          same 202×512 matrix as the<br>
+          embedding table — transposed.<br><br>
+          logits = hidden_state · E^T<br><br>
+          This saves 103,424 params and<br>
+          forces input/output representations<br>
+          to be consistent.
+        </div>
+      `},
+    ]
+  },
+  rms: {
+    title: "RMSNorm — Root Mean Square Normalization",
+    color: "var(--green)",
+    sections: [
+      { title: "Specification", rows: [
+        ["Type","RMSNorm (NOT LayerNorm)","green"],
+        ["Applied","Pre-norm (before each sub-layer)"],
+        ["Learnable params","γ ∈ ℝ^{512} per norm","green"],
+        ["ε","1e-6 (numerical stability)"],
+        ["No mean subtraction","LayerNorm centers; RMSNorm does NOT"],
+        ["Occurrences","2 per block × 8 blocks + 1 final = 17","green"],
+        ["Total params","17 × 512 = 8,704"],
+      ]},
+      { title: "Formula", html:`
+        <div class="formula-box">
+          RMS(x) = √( (1/d) Σ xᵢ² + ε )<br><br>
+          x̂ = x / RMS(x)<br><br>
+          output = γ ⊙ x̂<br><br>
+          where γ is a learnable scale vector<br>
+          (initialized to ones).<br><br>
+          Used in: LLaMA, Qwen, Mistral —<br>
+          faster and equally effective as LayerNorm.
+        </div>
+      `},
+    ]
+  },
+  attn: {
+    title: "Causal Multi-Head Self-Attention + RoPE",
+    color: "var(--orange)",
+    sections: [
+      { title: "Dimensions", rows: [
+        ["d_model","512"],
+        ["n_heads","8","orange"],
+        ["head_dim","64  (= 512 / 8)","orange"],
+        ["QKV linear","512 → 3×512 fused (no bias)"],
+        ["Output proj","512 → 512 (no bias)"],
+        ["Params per block","1,048,576","orange"],
+        ["8 blocks total","8,388,608"],
+        ["Flash Attention","YES — via scaled_dot_product_attention","green"],
+        ["Causal mask","is_causal=True (upper triangle = −∞)"],
+        ["Dropout","0.1 (attention weights, train only)"],
+      ]},
+      { title: "RoPE Positional Encoding", rows: [
+        ["Type","Rotary Position Embedding (RoPE)"],
+        ["Applied to","Q and K only (not V)"],
+        ["Base","θ = 10,000","yellow"],
+        ["Frequencies","inv_freq = 1 / (10000^(2i/64))","yellow"],
+        ["Context length","256 positions cached"],
+        ["Advantage","Relative position awareness at any length"],
+      ]},
+      { title: "Attention Formula", html:`
+        <div class="formula-box">
+          Q = xW_Q,  K = xW_K,  V = xW_V<br><br>
+          Q' = RoPE(Q),  K' = RoPE(K)<br><br>
+          score(i,j) = Q'ᵢ · K'ⱼᵀ / √64<br><br>
+          score(i,j) = −∞  if j &gt; i  (causal)<br><br>
+          attn = softmax(score) · V<br><br>
+          out = concat(heads) · W_out
+        </div>
+      `},
+    ]
+  },
+  mlp: {
+    title: "SwiGLU Feed-Forward Network",
+    color: "var(--purple)",
+    sections: [
+      { title: "Dimensions", rows: [
+        ["Input dim","512 (= d_model)"],
+        ["Hidden dim","1,368  (= ⌊8/3 × 512⌋ rounded to ×8)","purple"],
+        ["mlp_ratio","8/3 ≈ 2.6667 (SwiGLU convention)"],
+        ["3 weight matrices","w1, w2, w3 (no biases)"],
+        ["w1 (gate)","512 → 1,368  =  696,320 params"],
+        ["w3 (up)","512 → 1,368  =  696,320 params"],
+        ["w2 (down)","1,368 → 512  =  696,320 params"],
+        ["Params per block","2,088,960","purple"],
+        ["8 blocks total","16,711,680  (66.1% of model!)","purple"],
+        ["Dropout","0.1 after output (train only)"],
+      ]},
+      { title: "SwiGLU Formula", html:`
+        <div class="formula-box">
+          gate = SiLU( w1(x) )   ← learned gate<br>
+          up   = w3(x)           ← learned up-proj<br>
+          h    = gate ⊗ up       ← element-wise product<br>
+          out  = w2(h)           ← project back to 512<br><br>
+          SiLU(z) = z · σ(z)     ← smooth, non-zero gradient<br><br>
+          Vs standard FFN (2 matrices, ReLU):<br>
+          SwiGLU uses 3 matrices but the gating<br>
+          mechanism is empirically much better.
+        </div>
+      `},
+    ]
+  },
+  head: {
+    title: "LM Head — Logit Projection",
+    color: "var(--pink)",
+    sections: [
+      { title: "Specification", rows: [
+        ["Matrix","Eᵀ  where E is the embedding matrix","pink"],
+        ["Shape","512 → 202","pink"],
+        ["Additional params","0 (weight-tied) ★","green"],
+        ["Output","Logits ∈ ℝ^{202} per position"],
+        ["Special masking","PAD/BOS/UNK set to −∞ at inference"],
+        ["Training loss","Cross-entropy on shifted labels"],
+        ["Label shift","logits[:,:-1] vs labels[:,1:]"],
+        ["PAD labels","Ignored (label = −100)"],
+      ]},
+      { title: "Training Loss", html:`
+        <div class="formula-box">
+          loss = CrossEntropy(<br>
+            &nbsp;&nbsp;logits[:, :-1],  ← all but last<br>
+            &nbsp;&nbsp;labels[:, 1:],   ← shifted right<br>
+            &nbsp;&nbsp;ignore_index=-100<br>
+          )<br><br>
+          Next-token prediction:<br>
+          given [BOS, s₁, s₂, ..., sₙ]<br>
+          predict [s₁, s₂, ..., sₙ, EOS]
+        </div>
+      `},
+    ]
+  },
+  out: {
+    title: "Inference — Top-K Next-Step Ranking",
+    color: "var(--green)",
+    sections: [
+      { title: "Next-Step Prediction", rows: [
+        ["Input","Partial sequence (prefix)"],
+        ["Encode","[BOS] + step_ids (no EOS)"],
+        ["Truncate","Last 256 tokens (sliding window)"],
+        ["Forward pass","logits [1, T, 202]"],
+        ["Slice","logits[0, −1]  ← last position only","green"],
+        ["Mask","PAD/BOS/EOS/UNK → −∞"],
+        ["Output","Top-K (token, probability) pairs","green"],
+      ]},
+      { title: "Completion Mode", rows: [
+        ["Mode","Autoregressive generation"],
+        ["Greedy","argmax(logits) at each step"],
+        ["Sampling","multinomial(softmax(logits/T))"],
+        ["Stop","EOS token or max_new=220 steps"],
+        ["Validity","~100% valid sequences (validator)","green"],
+      ]},
+      { title: "Anomaly Mode", rows: [
+        ["NLL","Mean per-token −log P(step|context)"],
+        ["Threshold","95th-pct NLL over 1K valid seqs"],
+        ["P(valid)","σ( −4 × (NLL − threshold) )"],
+        ["Hybrid","Validator overrides LM if rules violated"],
+        ["F1 score","1.000 on eval_anomaly.csv","green"],
+        ["ROC-AUC","0.997 (LM only)","green"],
+      ]},
+    ]
+  },
+};
+
+function renderDetail(key) {
+  const d = DETAILS[key];
+  if (!d) return;
+  let html = `<h3 style="color:${d.color}">${d.title}</h3>`;
+  for (const sec of d.sections) {
+    html += `<div class="detail-section">`;
+    html += `<h4>${sec.title}</h4>`;
+    if (sec.rows) {
+      for (const [k, v, cls] of sec.rows) {
+        html += `<div class="kv-row">
+          <span class="kv-key">${k}</span>
+          <span class="kv-val ${cls||''}">${v}</span>
+        </div>`;
+      }
+    }
+    if (sec.html) html += sec.html;
+    html += `</div>`;
+  }
+  html += `<div class="nav-hint">Use Next → to walk through</div>`;
+  const panel = document.getElementById('detail-content');
+  panel.innerHTML = html;
+  panel.classList.remove('slideIn');
+  void panel.offsetWidth;
+  panel.classList.add('slideIn');
+}
+
+function show(key) {
+  // deactivate all
+  document.querySelectorAll('.arch-block').forEach(b => b.classList.remove('active-block'));
+  // activate clicked
+  const map = {
+    tokenizer:'blk-tokenizer', embed:'blk-embed', rms:'blk-norm1',
+    attn:'blk-attn', mlp:'blk-mlp', head:'blk-head', out:'blk-out'
+  };
+  if (map[key]) document.getElementById(map[key])?.classList.add('active-block');
+  renderDetail(key);
+}
+
+// ─── Walkthrough ───────────────────────────────────────────
+const WALK_STEPS = [
+  { key:'tokenizer', label:'Step 1/7 — Tokenizer' },
+  { key:'embed',     label:'Step 2/7 — Token Embedding' },
+  { key:'rms',       label:'Step 3/7 — RMSNorm (Pre-attention)' },
+  { key:'attn',      label:'Step 4/7 — Causal Multi-Head Attention' },
+  { key:'mlp',       label:'Step 5/7 — SwiGLU MLP' },
+  { key:'head',      label:'Step 6/7 — LM Head (weight-tied)' },
+  { key:'out',       label:'Step 7/7 — Inference & Output' },
+];
+let walkIdx = -1;
+let autoTimer = null;
+
+function walkNext() {
+  walkIdx = (walkIdx + 1) % WALK_STEPS.length;
+  applyWalk();
+}
+function walkPrev() {
+  walkIdx = (walkIdx - 1 + WALK_STEPS.length) % WALK_STEPS.length;
+  applyWalk();
+}
+function applyWalk() {
+  const s = WALK_STEPS[walkIdx];
+  document.getElementById('walk-info').textContent = s.label;
+  show(s.key);
+  // scroll the block into view
+  const map = {
+    tokenizer:'blk-tokenizer', embed:'blk-embed', rms:'blk-norm1',
+    attn:'blk-attn', mlp:'blk-mlp', head:'blk-head', out:'blk-out'
+  };
+  document.getElementById(map[s.key])?.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function autoWalk() {
+  if (autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('auto-btn').textContent='▶ Auto'; return; }
+  document.getElementById('auto-btn').textContent='⏹ Stop';
+  autoTimer = setInterval(() => {
+    walkIdx = (walkIdx + 1) % WALK_STEPS.length;
+    applyWalk();
+  }, 2600);
+}
+
+// ─── Token strip animation ──────────────────────────────────
+const tokens = document.querySelectorAll('.tok');
+tokens.forEach((t,i) => { t.style.animationDelay = (i*0.08)+'s'; });
+
+// ─── Auto-start first detail ────────────────────────────────
+setTimeout(() => { walkNext(); }, 600);
+</script>
+</body>
+</html>

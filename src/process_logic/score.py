@@ -166,24 +166,38 @@ def _print(title, metrics, keys):
         print(f"  {fam:7} n={m['n']:<5} {cells}")
 
 
+def _filter_gt(pred_rows, gt_rows):
+    """Filter GT to only examples present in pred (intersection scoring)."""
+    pred_ids = {r["EXAMPLE_ID"] for r in pred_rows}
+    return [r for r in gt_rows if r["EXAMPLE_ID"] in pred_ids]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pred-dir", default="extras/results")
     ap.add_argument("--gt-dir", default="data")
+    ap.add_argument("--intersect", action="store_true",
+                    help="score only on examples present in pred (for baselines with partial coverage)")
     args = ap.parse_args()
     pred, gt = Path(args.pred_dir), Path(args.gt_dir)
 
+    def maybe_filter(pred_rows, gt_rows):
+        return _filter_gt(pred_rows, gt_rows) if args.intersect else gt_rows
+
     if (pred / "nextstep.csv").exists():
+        p = read_rows(pred / "nextstep.csv")
         _print("Task 1 — Next-step",
-               score_nextstep(read_rows(pred / "nextstep.csv"), read_rows(gt / "eval_nextstep.csv")),
+               score_nextstep(p, maybe_filter(p, read_rows(gt / "eval_nextstep.csv"))),
                ["top1", "top3", "top5", "mrr"])
     if (pred / "completion.csv").exists():
+        p = read_rows(pred / "completion.csv")
         _print("Task 2 — Completion",
-               score_completion(read_rows(pred / "completion.csv"), read_rows(gt / "eval_completion.csv")),
+               score_completion(p, maybe_filter(p, read_rows(gt / "eval_completion.csv"))),
                ["exact_match", "norm_edit_dist", "token_acc"])
     if (pred / "anomaly.csv").exists():
+        p = read_rows(pred / "anomaly.csv")
         _print("Task 3 — Anomaly",
-               score_anomaly(read_rows(pred / "anomaly.csv"), read_rows(gt / "eval_anomaly.csv")),
+               score_anomaly(p, maybe_filter(p, read_rows(gt / "eval_anomaly.csv"))),
                ["acc", "precision", "recall", "f1", "roc_auc", "rule_attr"])
 
 
