@@ -36,6 +36,30 @@ DeepSeek / Qwen on every task** while being ~1000× smaller, with **zero API cos
 
 ---
 
+## Why this matters
+
+Many industrial processes — and semiconductor fabrication especially — are **long sequences of steps
+whose meaning depends entirely on order and process logic**: materials are deposited, patterned,
+modified, and removed in a precise, rule-governed order. That structure is highly regular, yet
+**hard to model robustly or benchmark** without dedicated training and evaluation.
+
+The deciding question isn't just *"can a model predict the next step?"* — it's **whether a model
+truly learns the underlying *process logic* or merely memorizes patterns.** The test is
+generalization to **unseen or modified workflows**: a model that *understands* the logic should
+transfer to a product family it has never seen; one that *memorizes* won't. That's why **OOD
+generalization is the metric that decides everything** here.
+
+And why a **small, from-scratch** model instead of a big-LLM API? Because the goal is **sovereign,
+reproducible process intelligence** — owning the data generation, the training, and the evaluation,
+and understanding how model size and data strategy affect process understanding — not a black-box
+wrapper. A compact model you can run, audit, and deploy yourself is the point.
+
+**Practical payoff:** a model that has learned process logic can **autocomplete recipes**, **catch
+invalid or out-of-order steps before they ruin a wafer** (anomaly detection that names the exact rule
+violated), and act as a **benchmark of process understanding** across model sizes and data strategies.
+
+---
+
 ## Benchmark — head-to-head
 
 A **1.37M** from-scratch decoder vs. an n-gram baseline and four frontier LLMs, on our held-out
