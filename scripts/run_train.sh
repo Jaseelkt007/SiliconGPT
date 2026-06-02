@@ -31,7 +31,7 @@ export WANDB_DIR="$(pwd)"
 # For LIVE online logging from the compute node instead, submit with
 #   sbatch --export=ALL,WANDB_MODE=online scripts/run_train.sh
 # and uncomment the proxy (needed for any compute-node internet):
-#   export HTTP_PROXY=http://proxyuser:5dd1d2bd00@10.99.0.1:38425
+#   export HTTP_PROXY=http://<PROXY_USER>:<PROXY_PASS>@<PROXY_HOST>:<PORT>
 #   export HTTPS_PROXY=$HTTP_PROXY http_proxy=$HTTP_PROXY https_proxy=$HTTP_PROXY
 
 # Run inside the pixi env (build it on a login node first: bash scripts/setup_leonardo.sh)

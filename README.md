@@ -220,8 +220,7 @@ extras/results/      prediction CSVs + benchmark outputs + the discovery run rec
 eval/                (optional) external scorer drop-in
 ```
 
-See **[`REPORT.md`](REPORT.md)** (the technical report), `DECISIONS.md`, and `CLAUDE.md`
-(project context + Leonardo/Slurm runbook).
+See **[`REPORT.md`](REPORT.md)** for the full technical write-up and the discovery story.
 
 > **Honesty note:** the final 1.37M checkpoint **is committed** (`checkpoints/best.pt`, 5.2 MB) so
 > anyone can run inference without retraining; the dataset and the larger experiment checkpoints

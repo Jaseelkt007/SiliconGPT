@@ -24,5 +24,7 @@ __pycache__/
 .venv/
 .env
 .ipynb_checkpoints/
-# co-scientist-lab skill 
+# co-scientist-lab skill
 .claude/skills/
+# local dev context — kept on disk, not part of the public repo
+CLAUDE.md
