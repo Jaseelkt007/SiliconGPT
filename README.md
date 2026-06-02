@@ -1,20 +1,38 @@
 # SiliconGPT — Learning & Benchmarking Process Logic
 
-**Zero One Hack_01 · Industrial AI / Infineon track.**
+> A **1.37M-parameter** decoder transformer, trained **from scratch**, that learns the *logic* of
+> semiconductor-fab process recipes — and beats frontier LLMs (GPT-5, Gemini, DeepSeek, Qwen) at it
+> while being **~1000× smaller**.
 
-A small, modern decoder transformer (**RMSNorm · RoPE · SwiGLU**) trained **from scratch** on
-semiconductor-fab process recipes (ordered step sequences). No giant pretrained LLM, no API
-wrapper — a sovereign, reproducible stack. We then used a **measurement-grounded multi-agent
-discovery loop** (an adaptation of Google's AI Co-Scientist, extended with a GPU **Experiment
-agent**) to search the architecture space, and found that a **1.37M-parameter** model
-generalizes *better* out-of-distribution than the 25M V1 — at no in-distribution cost.
+## What is this?
 
-**Four tasks:** next-step prediction · sequence completion · anomaly detection · out-of-distribution
-(OOD) generalization to an unseen 4th product family.
+Every microchip is manufactured by running a silicon wafer through a long, strictly-ordered sequence
+of **process steps** — clean, oxidize, deposit, pattern, etch, implant, anneal, measure, and so on
+(~100–150 steps per recipe). The order isn't arbitrary: it follows hard **process logic** (for
+example, *"an RCA clean must precede oxide growth"*). Getting a step out of order can ruin a wafer.
 
-> **Headline:** the 1.37M model beats Gemini 3.5-flash / GPT-5 / DeepSeek / Qwen on all three
-> tasks while being ~1000× smaller, and is the first lever to move the deciding OOD metric
-> (+0.008, 3-seed mean). Full numbers + the discovery story: **[`REPORT.md`](REPORT.md)**.
+**SiliconGPT learns that process logic directly from data.** We treat a recipe like a sentence —
+**one process step = one token** — and train a small transformer **from scratch** to model the
+"language" of fab recipes. No giant pretrained LLM, no external API: a compact, sovereign,
+reproducible model that runs on a CPU.
+
+### What it does — four tasks
+
+1. **Next-step prediction** — given the recipe so far, predict the next process step (ranked top-1/3/5).
+2. **Sequence completion** — given the first part of a recipe, generate the rest of it.
+3. **Anomaly detection** — given a complete recipe, decide whether it's **valid or rule-violating**, and name the exact rule that's broken.
+4. **Out-of-distribution (OOD) generalization** — does it still work on a **product family it has never seen**? This is the real test of whether the model learned transferable *logic* or just memorized patterns.
+
+The three predictive tasks each produce a result file (`nextstep.csv`, `completion.csv`,
+`anomaly.csv`); OOD is measured by holding out an entire product family the model never trained on.
+
+**The surprising finding:** a measurement-grounded multi-agent *discovery loop* searched the design
+space and found that a **smaller** model (25M → 1.37M) *generalizes better* out-of-distribution — at
+**no** in-distribution cost. The result is a tiny, from-scratch model that **beats GPT-5 / Gemini /
+DeepSeek / Qwen on every task** while being ~1000× smaller, with **zero API cost**.
+
+> Built at **Zero One Hack_01** (Industrial AI / Infineon track). Full numbers + the discovery
+> story: **[`REPORT.md`](REPORT.md)**.
 
 ---
 
