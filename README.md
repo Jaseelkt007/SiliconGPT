@@ -147,6 +147,26 @@ Frontend + screenshots: see **[`REPORT.md`](REPORT.md)** (Results) and `extras/r
 
 ---
 
+## How the model works
+
+SiliconGPT is a small, **decoder-only transformer** (GPT-style, causal), trained from scratch — a
+modern stack with **no biases** and the embedding/head **weight-tied**.
+
+![SiliconGPT model architecture — tokenizer → embedding → 3 decoder blocks → final RMSNorm → LM head → next step](docs/architecture_LLM.png)
+
+```
+vocab 202 (198 step tokens + 4 specials) · d_model 192 · 3 layers · 8 heads (head_dim 24)
+SwiGLU MLP 192→512→192 (SiLU) · RoPE rotary positions · RMSNorm (pre-norm) · context 256
+weight-tied embedding↔head · no biases · ~1.37M parameters
+```
+
+- **One process step = one token** (202-token vocab) — the model learns the *grammar* of fab recipes directly, not English.
+- **Position via RoPE** (rotary) applied to Q,K in every attention layer — there is no learned position embedding.
+- **Weight tying:** the LM head reuses the token-embedding matrix. **No cross-layer weight sharing** — each of the 3 blocks is independent (we tested sharing; it hurt OOD).
+- **Anomaly detection is hybrid:** the model's own perplexity **+** a deterministic rule validator (exact rule attribution).
+
+---
+
 ## The discovery loop — how we found the architecture
 
 We didn't hand‑tune SiliconGPT. We built a **measurement‑grounded multi‑agent loop** — *inspired by*
