@@ -9,8 +9,8 @@ discovery loop** (an adaptation of Google's AI Co-Scientist, extended with a GPU
 agent**) to search the architecture space, and found that a **1.37M-parameter** model
 generalizes *better* out-of-distribution than the 25M V1 — at no in-distribution cost.
 
-**Tasks (scored by the organizers' `eval_metrics.py`):** next-step prediction · sequence
-completion · anomaly detection · (post-submission) OOD generalization to a hidden 4th family.
+**Four tasks:** next-step prediction · sequence completion · anomaly detection · out-of-distribution
+(OOD) generalization to an unseen 4th product family.
 
 > **Headline:** the 1.37M model beats Gemini 3.5-flash / GPT-5 / DeepSeek / Qwen on all three
 > tasks while being ~1000× smaller, and is the first lever to move the deciding OOD metric
@@ -21,27 +21,13 @@ completion · anomaly detection · (post-submission) OOD generalization to a hid
 ## Benchmark — head-to-head
 
 A **1.37M** from-scratch decoder vs. an n-gram baseline and four frontier LLMs, on our held-out
-eval. **Higher is better** for accuracy, **lower** for latency; **bold = best in column**.
-
-| System | Top-1 | Top-5 | OOD | Completion (token %) | Anomaly F1 | Latency |
-|---|--:|--:|--:|--:|--:|--:|
-| **SiliconGPT** · ours · 1.37M | **81.1%** | **100.0%** | **50.3%** | **40.5%** | **1.000** | 14 ms |
-| n-gram (trigram) · baseline | 76.1% | 100.0% | — | 28.3% | — | **1 ms** |
-| Gemini 3.5-flash · Google API | 55.5% | 78.0% | — | 7.6% | 0.910 | 5.3 s |
-| GPT-5 · OpenAI API | 52.5% | 72.0% | — | — | — | 35.0 s |
-| DeepSeek V3-0324 · open weights | 48.0% | 65.0% | — | 5.6% | 0.603 | 6.5 s |
-| Qwen3.6-35B-A3B · open weights | 41.5% | 63.5% | — | 2.5% | 0.690 | 1.9 s |
-
-**+25.6 pt** vs Gemini on Top-1 · **$0** API cost · **~380×** lower latency than Gemini · **anomaly F1 1.000**.
-
-> Scored on the full **5,200-example** held-out eval (3,600 next-step · 600 completion · 1,000
-> anomaly); the frontier LLMs on a 200-example sample. **OOD** measures generalization to an unseen
-> product family, so it applies only to our trained model; the n-gram and GPT-5 have no anomaly
-> score. "—" = not evaluated. *(Authoritative numbers come from the organizers' `eval_metrics.py`.)*
+eval — **+25.6 pt vs Gemini on Top-1, ~380× lower latency, $0 API cost, and a perfect anomaly F1 (1.000)**.
 
 ![SiliconGPT benchmark — head-to-head vs n-gram and frontier LLMs](docs/benchmark.png)
 
-*The same numbers, rendered live in the SiliconGPT dashboard.*
+> Full **5,200-example** held-out eval (3,600 next-step · 600 completion · 1,000 anomaly); the
+> frontier LLMs on a 200-example sample. **OOD** = generalization to an unseen product family, so it
+> applies only to our trained model. Higher is better for accuracy; lower for latency.
 
 ---
 
@@ -73,55 +59,31 @@ python src/process_logic/train.py \
 > *byte-identical* checkpoint at `checkpoints/final_3m_rope/best.pt`. (The dataset and the larger
 > experiment checkpoints stay gitignored/regenerable.)
 
-### Reproduce the official submission (the judges' path)
+---
 
-Run the trained model on the organizers' eval inputs to produce the three submission files,
-then score with their `eval_metrics.py`. Follow the four steps below from a clean checkout —
-no GPU required (the command auto-detects CUDA, else runs on CPU).
+## Run inference on your own data (CPU — no GPU needed)
 
-**1. Install the environment.**
+Point the model at a CSV of recipes to get predictions for all three tasks, then score them.
+Both steps run on a plain **CPU** — no GPU required (the command auto-detects CUDA if present).
 
-```bash
-pip install -r requirements.txt        # or use pixi (see "Run it from a clean checkout" above)
-```
+**Input format** — the model reads only the input columns; steps are `|`-separated:
 
-**2. Place the two organizer input files at the repo root.** They are *input-only* — the model
-reads only the input columns, no answer columns needed:
-
-| File (at repo root) | Required columns | Used for |
+| File | Required columns | Used for |
 |---|---|---|
-| `eval_input_valid.csv`   | `EXAMPLE_ID`, `PARTIAL_SEQUENCE` (pipe-separated steps) | next-step **and** completion |
-| `eval_input_anomaly.csv` | `EXAMPLE_ID`, `SEQUENCE` (pipe-separated steps)         | anomaly |
+| `eval_input_valid.csv`   | `EXAMPLE_ID`, `PARTIAL_SEQUENCE` | next-step **and** completion |
+| `eval_input_anomaly.csv` | `EXAMPLE_ID`, `SEQUENCE`         | anomaly |
 
-> No organizer files yet? Our own held-out eval CSVs (`data/eval_*.csv`, after
-> `python scripts/build_datasets.py`) have the same input columns and are drop-in compatible.
+> Don't have your own CSVs? `python scripts/build_datasets.py` generates ready-to-use
+> `data/eval_*.csv` with these exact columns.
 
-**3. Run the model to produce the three submission CSVs.**
+**Output format** — `predict.py` writes one CSV per task:
+`EXAMPLE_ID,RANK_1..RANK_5` (next-step) · `EXAMPLE_ID,PREDICTED_SEQUENCE` (completion) ·
+`EXAMPLE_ID,IS_VALID,SCORE,PREDICTED_RULE` (anomaly).
 
-```bash
-python src/process_logic/predict.py --ckpt checkpoints/best.pt \
-    --out-dir extras/results \
-    --nextstep-input   eval_input_valid.csv \
-    --completion-input eval_input_valid.csv \
-    --anomaly-input    eval_input_anomaly.csv \
-    --calib-file       data/val_id.csv
-#    -> extras/results/{nextstep,completion,anomaly}.csv
-```
+### Try it in seconds (built-in subset)
 
-**4. Score with the organizers' scorer.**
-
-```bash
-python eval/eval_metrics.py        # official scorer (drop in at event start)
-```
-
-Output formats follow the spec exactly (`generation_rules.md §5`):
-`EXAMPLE_ID,RANK_1..RANK_5` (next-step), `EXAMPLE_ID,PREDICTED_SEQUENCE` (completion),
-and `EXAMPLE_ID,IS_VALID,SCORE,PREDICTED_RULE` (anomaly).
-
-### Quick CPU demo (no GPU, finishes in seconds)
-
-To confirm the whole **predict → score** pipeline works on your machine, run it on a tiny
-subset of the eval inputs. **No GPU required** — it runs on a single CPU.
+Confirm the whole **predict → score** pipeline works on your machine, on a tiny built-in subset —
+on a single **CPU**:
 
 **One command (recommended):**
 
@@ -161,7 +123,7 @@ pixi run python src/process_logic/score.py \
 ```
 
 Swap `--device cpu` for `--device cuda` and the `*_demo.csv` inputs for the full `eval_*.csv`
-(or the organizer files) to run the real thing.
+(or your own CSVs) to run on the complete dataset.
 
 ---
 
@@ -234,16 +196,17 @@ scripts/             build_datasets.py · run_*.sh (Leonardo Slurm) · benchmark
 server/              Flask inference API (app.py, inference.py)
 configs/             model_3m_rope.yaml (deliverable) · model_v1.yaml (25M) · train_v1.yaml
 data/                generated (gitignored) — regenerate with build_datasets.py
-extras/results/      submission CSVs + benchmark outputs + the discovery run record
-eval/                drop the organizers' eval_metrics.py here at event start
+extras/results/      prediction CSVs + benchmark outputs + the discovery run record
+eval/                (optional) external scorer drop-in
 ```
 
-See **[`REPORT.md`](REPORT.md)** (the jury report), `DECISIONS.md`, and `CLAUDE.md`
+See **[`REPORT.md`](REPORT.md)** (the technical report), `DECISIONS.md`, and `CLAUDE.md`
 (project context + Leonardo/Slurm runbook).
 
-> **Honesty note:** the final 1.37M deliverable checkpoint **is committed** (`checkpoints/best.pt`,
-> 5.2 MB) so judges can test without retraining; the dataset and the larger experiment checkpoints
+> **Honesty note:** the final 1.37M checkpoint **is committed** (`checkpoints/best.pt`, 5.2 MB) so
+> anyone can run inference without retraining; the dataset and the larger experiment checkpoints
 > (25M V1, OOD runs) are *not* committed (gitignored) — they regenerate deterministically with the
-> commands above. The model trains from scratch and uses
-> no external API at inference. Block-level Accuracy shown in the UI is our 5-step-window
-> interpretation; the authoritative number is from the organizers' `eval_metrics.py`.
+> commands above. The model trains **from scratch** and uses **no external API at inference**. The
+> OOD gain is modest but real (+0.008 next-step Top-1, 3-seed mean) — the bigger wins are efficiency
+> (~18× smaller than our 25M baseline) and the rigorous, measured discovery process. Block-level
+> Accuracy shown in the UI is our 5-step-window interpretation.
