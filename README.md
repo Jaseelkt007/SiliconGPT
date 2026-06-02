@@ -185,6 +185,36 @@ Frontend + screenshots: see **[`REPORT.md`](REPORT.md)** (Results) and `extras/r
 
 ---
 
+## The discovery loop — how we found the architecture
+
+We didn't hand‑tune SiliconGPT. We built a **measurement‑grounded multi‑agent loop** — *inspired by*
+Google's AI Co‑Scientist, but implemented as a **deterministic sequential pipeline** (not the paper's
+asynchronous agent mesh) — and added a **GPU Experiment agent** that actually trains and benchmarks
+every hypothesis, so an Elo tournament ranks ideas on **measured OOD, not argument**.
+
+![SiliconGPT Co-Scientist Lab — the agent orchestration: a sequential, experimentally-grounded discovery loop with an added Experiment agent](docs/agent_orchestration.png)
+
+**One round, in order** (the Supervisor orchestrates; `config.md` holds the goal + criteria):
+
+1. **Generation** — propose hypotheses, informed by last round's meta‑review.
+2. **Reflection** — peer‑review + filter, and triage each as *config‑expressible* (auto‑testable) or *needs‑code*.
+3. **Experiment** ★new★ — train + benchmark each idea up a 3‑tier ladder (debate → smoke → full 3‑fold OOD on A100) and write a **measured result**.
+4. **Proximity** — cluster / de‑duplicate the surviving ideas.
+5. **Ranking** — Elo tournament, weighting *measured > simulated > reasoned*.
+6. **Evolution** — recombine the winners into new hypotheses.
+7. **Meta‑review** — synthesize the round's lessons, fed into every agent next round.
+
+The Supervisor then runs another round or stops (plateau / budget). **How it differs from Google's
+Co‑Scientist:** the original is an asynchronous mesh with many concurrent feedback loops; ours is a
+**single sequential pass per round** with one feedback edge (Meta‑review → next round), plus the
+**Experiment agent** — our key addition, which grounds the tournament in real GPU runs.
+
+Across two rounds it tested **eight levers, rejected five with measured negatives**, and found the
+counterintuitive winner — **shrink the model** (25M → 1.37M) for better OOD at no in‑distribution cost.
+Full run record: [`extras/results/coscilab/COSCIENTIST_LAB.md`](extras/results/coscilab/COSCIENTIST_LAB.md) · method + negatives: [`REPORT.md`](REPORT.md).
+
+---
+
 ## Tests
 
 ```bash
